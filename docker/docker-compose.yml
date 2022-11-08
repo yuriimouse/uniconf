@@ -1,0 +1,10 @@
+version: '3'
+services:
+  uniconf-lib:
+    container_name: uniconf
+    build: .
+    volumes:
+      - ../:/uniconf
+    entrypoint: /bin/bash
+    stdin_open: true
+    tty: true
