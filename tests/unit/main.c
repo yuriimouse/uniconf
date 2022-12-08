@@ -9,10 +9,12 @@
 #include <CUnit/Basic.h>
 #include "defines.h"
 
+extern CU_TestInfo test_common[];
 extern CU_TestInfo test_tree[];
 CU_SuiteInfo suites[] =
     {
         // suite name, init, clean, NULL, NULL, array of tests
+        {"[Common]", NULL, NULL, NULL, NULL, test_common},
         {"[Tree]", NULL, NULL, NULL, NULL, test_tree},
 
         CU_SUITE_INFO_NULL,

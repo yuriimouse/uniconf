@@ -18,66 +18,22 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <dirent.h>
+#include <ctype.h>
 
-static char *uniconf_path = NULL;
+static char *
+    uniconf_path = NULL;
 static uniconf_t
     uniconf_root = NULL;
 
 /**
- * Build the correct path
- *
- * @param path
- * @param name
- *
- * @return allocated char* | NULL
+ * Get the root
+ * 
+ * @return uniconf_t 
  */
-char *uniconf_makepath(const char *path, const char *name)
+uniconf_t uniconf_get_root()
 {
-    char *result = NULL;
-
-    if (name && strlen(name) > 0)
-    {
-        if (path && strlen(path) > 0)
-        {
-            asprintf(&result, "%s/%s", path, name);
-        }
-        else
-        {
-            result = strdup(name);
-        }
-    }
-    else if (path && strlen(path) > 0)
-    {
-        result = strdup(path);
-    }
-
-    return result;
-}
-
-/**
- * Check the path
- *
- * @param path
- * @param name
- *
- * @return <0 = not found|error, 1 = directory, 0 = file
- */
-int uniconf_check(const char *path, const char *name)
-{
-    struct stat path_stat;
-
-    char *filename = uniconf_makepath(path, name);
-    if (filename)
-    {
-        int result = stat(filename, &path_stat);
-        free(filename);
-        return result ? -errno
-                      : S_ISDIR(path_stat.st_mode);
-    }
-
-    return -EINVAL; // Invalid argument
+    return uniconf_root;
 }
 
 /**
@@ -104,7 +60,7 @@ int uniconf_dir(uniconf_t root, const char *path, const char *name)
             if (ext)
             {
                 ext[0] = '\0';
-                root = cJSON_AddObjectToObject(root, branch);
+                root = uniconf_node(root, branch);
             }
             free(branch);
         }
@@ -158,23 +114,23 @@ int uniconf_file(uniconf_t root, const char *path, const char *filename)
 
         if (!strcmp("env", ext))
         {
-            ret = parse_env(root, filepath, name);
+            ret = uniconf_env(root, filepath, name);
         }
         else if (!strcmp("ini", ext))
         {
-            ret = parse_ini(root, filepath, name);
+            ret = uniconf_ini(root, filepath, name);
         }
         else if (!strcmp("conf", ext))
         {
-            ret = parse_conf(root, filepath, name);
+            ret = uniconf_conf(root, filepath, name);
         }
         else if (!strcmp("json", ext))
         {
-            ret = parse_json(root, filepath, name);
+            ret = uniconf_json(root, filepath, name);
         }
         else if (!strcmp("yml", ext) || !strcmp("yaml", ext))
         {
-            ret = parse_yml(root, filepath, name);
+            ret = uniconf_yml(root, filepath, name);
         }
 
         free(filepath);
