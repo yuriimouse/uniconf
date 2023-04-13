@@ -31,7 +31,7 @@ static uniconf_t
  * 
  * @return uniconf_t 
  */
-uniconf_t uniconf_get_root()
+uniconf_t uniconf_get_root(void)
 {
     return uniconf_root;
 }
@@ -203,7 +203,7 @@ int uniconf_construct(const char *format, ...)
  * Destruct config tree
  *
  */
-void uniconf_destruct()
+void uniconf_destruct(void)
 {
     cJSON_Delete(uniconf_root);
     uniconf_root = NULL;

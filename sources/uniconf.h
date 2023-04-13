@@ -22,7 +22,7 @@
 typedef cJSON *
     uniconf_t;
 
-uniconf_t uniconf_get_root();
+uniconf_t uniconf_get_root(void);
 
 // internal
 int uniconf_process(uniconf_t root, const char *path, const char *name);
@@ -50,7 +50,7 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch);
 
 // interface
 int uniconf_construct(const char *format, ...);
-void uniconf_destruct();
+void uniconf_destruct(void);
 
 uniconf_t uniconf_object(const char *format, ...);
 char *uniconf_value(const char *format, ...);
