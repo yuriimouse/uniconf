@@ -6,6 +6,62 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "list/lists.h"
+
+struct yaml_level
+{
+    int prefix;
+    cJSON *node;
+};
+
+static cJSON *uniconf_yml__toArray(cJSON *node, char *value)
+{
+    cJSON *ret = NULL;
+    if (cJSON_IsNull(node))
+    {
+        node->type = cJSON_Array;
+    }
+    if (cJSON_IsArray(node))
+    {
+        char *expanded = uniconf_substitute(uniconf_trim(value + 1, "#"));
+        ret = cJSON_CreateString(expanded);
+        cJSON_AddItemToArray(node, ret);
+        free(expanded);
+    }
+    return ret;
+}
+
+static cJSON *uniconf_yml__toObject(cJSON *node, char *value)
+{
+    if (cJSON_IsNull(node))
+    {
+        node->type = cJSON_Object;
+    }
+    if (cJSON_IsObject(node))
+    {
+        return cJSON_AddNullToObject(node, uniconf_trim(value, ":"));
+    }
+    return NULL;
+}
+
+static cJSON *uniconf_yml__append(cJSON *node, char *value)
+{
+    if (node)
+    {
+        cJSON *ret = NULL;
+        if ('-' == value[0])
+        {
+            ret = uniconf_yml__toArray(node, value);
+        }
+        else if (strchr(value, ':'))
+        {
+            ret = uniconf_yml__toObject(node, value);
+        }
+        return ret;
+    }
+    return NULL;
+}
+
 /**
  * Parse the .yml file
  *
@@ -18,38 +74,58 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
 {
     int count = 0;
     cJSON *node = uniconf_node(root, branch);
-    FILE *file = NULL;
-
-    if (node && filepath && (file = fopen(filepath, "rt")))
+    if (node)
     {
-        char *buffer = NULL;
-        size_t len = 0;
-        getdelim(&buffer, &len, '\0', file);
-        fclose(file);
+        list_t *stack = list_construct();
+        struct yaml_level *level = NULL;
 
-        cJSON *json = cJSON_Parse(buffer);
-        if (json && cJSON_IsObject(json))
+        uniconf_FileByLine(filepath, line)
         {
-            for (cJSON *element = json->child; element != NULL; element = element->next)
+            if (!uniconf_is_commented(line, "#"))
             {
-                cJSON *dup = cJSON_Duplicate(element, 1);
-                if (dup)
+                char *prefix = NULL;
+                int nnn = 0;
+                char *value = NULL;
+                sscanf(line, "%m[ ]%n", &prefix, &nnn);
+                sscanf(line + nnn, "%m[^#]", &value);
+
+                level = list_get(stack);
+                if (level && nnn <= level->prefix)
                 {
-                    count++;
-                    if (!cJSON_AddItemToObject(node, element->string, dup))
+                    while (level && nnn < level->prefix)
                     {
-                        count--;
-                        cJSON_Delete(dup);
+                        free(list_pop(stack));
+                        level = list_get(stack);
+                    }
+
+                    if (level && nnn == level->prefix)
+                    {
+                        uniconf_yml__append(level->node, value);
+                        count++;
+                    }
+                    else
+                    {
+                        level = malloc(sizeof(struct yaml_level));
+                        level->prefix = nnn;
+                        level->node = uniconf_yml__append(node, value);
+                        list_push(stack, level);
+                        count++;
                     }
                 }
+                else
+                {
+                    level = malloc(sizeof(struct yaml_level));
+                    level->prefix = nnn;
+                    level->node = uniconf_yml__append(node, value);
+                    list_push(stack, level);
+                    count++;
+                }
+                FREE_AND_NULL(prefix);
+                FREE_AND_NULL(value);
             }
         }
-        cJSON_Delete(json);
-
-        if (buffer)
-        {
-            free(buffer);
-        }
+        uniconf_EndByLine(line);
+        list_destruct(stack,NULL);
     }
 
     return count;

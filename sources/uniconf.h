@@ -55,6 +55,13 @@ void uniconf_destruct();
 uniconf_t uniconf_object(const char *format, ...);
 char *uniconf_value(const char *format, ...);
 
+#define FREE_AND_NULL(var) \
+    if (var)               \
+    {                      \
+        free(var);         \
+        var = NULL;        \
+    }
+
 #define uniconf_IsObject(element) ((element)->type & (cJSON_Array | cJSON_Object))
 #define uniconf_GetName(element) ((element)->string)
 #define uniconf_GetValue(element) ((element)->valuestring)
