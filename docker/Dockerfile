@@ -1,8 +1,9 @@
 FROM centos:7
-# Compilators and make tools
-RUN yum groupinstall -y Development tools
 # Install epel
 RUN yum install -y epel-release
+# Compilators and make tools
+RUN yum groupinstall -y Development tools
+RUN yum install -y glibc-devel
 # Troubleshooting and debugging utilities
 RUN yum install -y valgrind gdb strace gdb-gdbserver
 # Convenience utilities
@@ -14,6 +15,6 @@ RUN git clone https://github.com/DaveGamble/cJSON.git && cd cJSON && make && mak
 RUN yum install texinfo -y
 RUN git clone https://github.com/hyperrealm/libconfig.git && cd libconfig && autoreconf || autoreconf && ./configure && make && make install
 # Install CUnit of needed version
-RUN yum install -y CUnit-devel
+RUN yum install -y CUnit
 #
 RUN export LD_LIBRARY_PATH=/usr/local/custom/lib/
