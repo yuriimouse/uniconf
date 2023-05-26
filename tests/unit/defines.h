@@ -1,8 +1,6 @@
 #ifndef UNIT_TEST_DEFS_H
 #define UNIT_TEST_DEFS_H
 
-#include <uniconf.h>
-
 #define START_USING_TEST_DATA(path)                        \
     char *_str = NULL;                                     \
     FILE *_fp;                                             \

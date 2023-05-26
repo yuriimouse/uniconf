@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include <CUnit/Basic.h>
+#include <uniconf.h>
 
 #include "defines.h"
 
