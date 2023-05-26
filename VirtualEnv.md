@@ -7,9 +7,9 @@
 
 #### Make bin in virtual environment
 
-- `export LD_LIBRARY_PATH=/usr/local/custom/lib/`
+- `export LD_LIBRARY_PATH=/usr/local/custom/lib/:/usr/local/lib/`
 - `cd /uniconf`
 - `make` basic make
 - `make re` for remake
-- `make test` for build tests
 - `make install` for install
+- `make test` for build tests
