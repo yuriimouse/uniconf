@@ -1,4 +1,4 @@
-#include "uniconf.h"
+#include "uniconf.internal.h"
 
 #include <stdio.h>
 #include <stdarg.h>

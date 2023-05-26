@@ -1,10 +1,10 @@
-#include "uniconf.h"
+#include "uniconf.internal.h"
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 
 /**
@@ -250,7 +250,7 @@ cJSON *uniconf_vardata(char *varname)
     cJSON *var = uniconf_get_root();
     if (varname)
     {
-        for (char *sptr, *token = strtok_r(varname, "/.", &sptr); var && token; token = strtok_r(NULL, "/.", &sptr))
+        for (char *sptr, *token = strtok_r(varname, PATH_DELIM, &sptr); var && token; token = strtok_r(NULL, PATH_DELIM, &sptr))
         {
             var = cJSON_GetObjectItemCaseSensitive(var, (const char *)token);
         }

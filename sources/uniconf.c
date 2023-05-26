@@ -13,13 +13,14 @@
  **/
 
 #include "uniconf.h"
+#include "uniconf.internal.h"
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <string.h>
-#include <dirent.h>
 #include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
 static char *
     uniconf_path = NULL;
@@ -28,12 +29,43 @@ static uniconf_t
 
 /**
  * Get the root
- * 
- * @return uniconf_t 
+ *
+ * @return uniconf_t
  */
 uniconf_t uniconf_get_root()
 {
     return uniconf_root;
+}
+
+static int uniconf_process(uniconf_t node, const char *path, const char *name);
+static int uniconf_dir(uniconf_t root, const char *path, const char *name);
+static int uniconf_file(uniconf_t root, const char *path, const char *filename);
+static uniconf_t uniconf_object_v(uniconf_t object, const char *format, va_list ap);
+
+/**
+ * Process the directory entry into the config node
+ *
+ * @param node
+ * @param path
+ * @param name
+ *
+ * @return <0 - error, >= 0 - count
+ */
+static int uniconf_process(uniconf_t node, const char *path, const char *name)
+{
+    if (0 == (strcmp(".", name) * strcmp("..", name)))
+    {
+        // skip
+        return 0;
+    }
+
+    int result = uniconf_check(path, name);
+    if (result < 0)
+    {
+        return result; // error or not found
+    }
+    return result ? uniconf_dir(node, path, name)
+                  : uniconf_file(node, path, name);
 }
 
 /**
@@ -45,7 +77,7 @@ uniconf_t uniconf_get_root()
  *
  * @return <0 = error, >=0 = count
  */
-int uniconf_dir(uniconf_t root, const char *path, const char *name)
+static int uniconf_dir(uniconf_t root, const char *path, const char *name)
 {
     int ret = 0;
     int count = 0;
@@ -99,7 +131,7 @@ int uniconf_dir(uniconf_t root, const char *path, const char *name)
  *
  * @return <0 = error, >=0 = count
  */
-int uniconf_file(uniconf_t root, const char *path, const char *filename)
+static int uniconf_file(uniconf_t root, const char *path, const char *filename)
 {
     int ret = 0;
 
@@ -138,33 +170,6 @@ int uniconf_file(uniconf_t root, const char *path, const char *filename)
 
     free(name);
     return ret;
-}
-
-/**
- * Process the directory entry into the config node
- *
- * @param node
- * @param path
- * @param name
- *
- * @return <0 - error, >= 0 - count
- */
-// uniconf_process(uniconf_root, uniconf_path, NULL)
-int uniconf_process(uniconf_t node, const char *path, const char *name)
-{
-    if (0 == (strcmp(".", name) * strcmp("..", name)))
-    {
-        // skip
-        return 0;
-    }
-
-    int result = uniconf_check(path, name);
-    if (result < 0)
-    {
-        return result; // error or not found
-    }
-    return result ? uniconf_dir(node, path, name)
-                  : uniconf_file(node, path, name);
 }
 
 /**
@@ -209,6 +214,23 @@ void uniconf_destruct()
     uniconf_root = NULL;
 }
 
+static uniconf_t uniconf_object_v(uniconf_t object, const char *format, va_list ap)
+{
+    char *the_path = NULL;
+    vasprintf(&the_path, format, ap);
+    for (char *sptr, *token = strtok_r(the_path, PATH_DELIM, &sptr); object && token; token = strtok_r(NULL, PATH_DELIM, &sptr))
+    {
+        object = cJSON_GetObjectItemCaseSensitive(object, token);
+    }
+    if (the_path)
+    {
+        free(the_path);
+        the_path = NULL;
+    }
+
+    return object;
+}
+
 /**
  * Get the named object from config
  *
@@ -216,18 +238,14 @@ void uniconf_destruct()
  * @param ...
  * @return uniconf_t
  */
-uniconf_t uniconf_object(const char *format, ...)
+uniconf_t uniconf_getObject(const char *format, ...)
 {
-    char *the_path = NULL;
-
     va_list ap;
     va_start(ap, format);
-    vasprintf(&the_path, format, ap);
+    uniconf_t object = uniconf_object_v(uniconf_get_root(), format, ap);
     va_end(ap);
 
-    //
-
-    return NULL;
+    return object;
 }
 
 /**
@@ -235,18 +253,40 @@ uniconf_t uniconf_object(const char *format, ...)
  *
  * @param format
  * @param ...
- * @return const char*
+ * @return char*
  */
-char *uniconf_value(const char *format, ...)
+char *uniconf_getString(const char *format, ...)
 {
-    char *the_path = NULL;
-
     va_list ap;
     va_start(ap, format);
-    vasprintf(&the_path, format, ap);
+    uniconf_t object = uniconf_object_v(uniconf_get_root(), format, ap);
     va_end(ap);
 
-    //
+    return cJSON_IsString(object) ? cJSON_GetStringValue(object) : NULL;
+}
 
-    return NULL;
+/**
+ * Get the number value of the named object from config
+ *
+ * @param format
+ * @param ...
+ * @return long long
+ */
+long long uniconf_getNumber(const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    uniconf_t object = uniconf_object_v(uniconf_get_root(), format, ap);
+    va_end(ap);
+
+    if (cJSON_IsString(object))
+    {
+        return atoll(cJSON_GetStringValue(object));
+    }
+    else if (cJSON_IsNumber(object))
+    {
+        return (long long)cJSON_GetNumberValue(object);
+    }
+
+    return 0;
 }
