@@ -6,7 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "list/lists.h"
+#include <lists.h>
 
 struct yaml_level
 {

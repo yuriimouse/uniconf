@@ -10,7 +10,7 @@ TEST_PATH = tests/
 VERSION := $(shell ./version.sh)
 
 CC = gcc # compiler
-CFLAGS = -fPIC -Wall -Wextra -O2 -g -std=gnu99 -DVERSION=$(VERSION) -I/usr/include # compiling flags
+CFLAGS = -fPIC -Wall -Wextra -O2 -g -std=gnu99 -DVERSION=$(VERSION) -I/usr/include -I/usr/local/custom/include # compiling flags
 LDFLAGS = -shared # linking flags
 
 STATIC_LIB = lib$(LIB_NAME).a

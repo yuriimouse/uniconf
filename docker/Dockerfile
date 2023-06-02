@@ -12,10 +12,10 @@ RUN yum install -y valgrind gdb strace gdb-gdbserver
 RUN yum install -y vim bash-completion w3m telnet nc libcurl-devel bc
 #### Source dependable on ####
 # cJSON
-RUN git clone https://github.com/DaveGamble/cJSON.git && cd cJSON && make && make install && cp *.a /usr/local/lib/ && rm -rf cJSON
+RUN git clone https://github.com/DaveGamble/cJSON.git && cd cJSON && make && make install && cp *.a /usr/local/lib/ && cd .. && rm -rf cJSON
 # Libconfig
 RUN yum install texinfo -y
-RUN git clone https://github.com/hyperrealm/libconfig.git && cd libconfig && autoreconf || autoreconf && ./configure && make && make install && rm -rf libconfig
+RUN git clone https://github.com/hyperrealm/libconfig.git && cd libconfig && autoreconf || autoreconf && ./configure && make && make install && cd .. && rm -rf libconfig
 # Install CUnit of needed version
 RUN yum install -y CUnit-devel
 #
