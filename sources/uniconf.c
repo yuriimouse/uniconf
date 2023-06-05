@@ -53,12 +53,6 @@ static uniconf_t uniconf_object_v(uniconf_t object, const char *format, va_list 
  */
 static int uniconf_process(uniconf_t node, const char *path, const char *name)
 {
-    if (0 == (strcmp(".", name) * strcmp("..", name)))
-    {
-        // skip
-        return 0;
-    }
-
     int result = uniconf_check(path, name);
     if (result < 0)
     {
