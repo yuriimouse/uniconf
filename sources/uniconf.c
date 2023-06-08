@@ -91,8 +91,8 @@ static int uniconf_dir(uniconf_t root, const char *path, const char *name)
             if (ext)
             {
                 ext[0] = '\0';
-                root = uniconf_node(root, branch);
             }
+            root = uniconf_node(root, branch);
             free(branch);
         }
 
