@@ -53,6 +53,11 @@ static uniconf_t uniconf_object_v(uniconf_t object, const char *format, va_list 
  */
 static int uniconf_process(uniconf_t node, const char *path, const char *name)
 {
+    if (name && ((0 == strcmp(".", name)) || (0 == strcmp("..", name))))
+    {
+        return 0;
+    }
+
     int result = uniconf_check(path, name);
     if (result < 0)
     {
@@ -172,7 +177,7 @@ static int uniconf_file(uniconf_t root, const char *path, const char *filename)
  * @param format
  * @param ...
  *
- * @return : 0 - success, <>0 - error number
+ * @return : >=0 - success count, <0 - error number
  */
 int uniconf_construct(const char *format, ...)
 {
@@ -190,12 +195,16 @@ int uniconf_construct(const char *format, ...)
     // construct
     uniconf_root = cJSON_CreateObject();
 
-    va_list ap;
-    va_start(ap, format);
-    vasprintf(&uniconf_path, format, ap);
-    va_end(ap);
+    if (format)
+    {
+        va_list ap;
+        va_start(ap, format);
+        vasprintf(&uniconf_path, format, ap);
+        va_end(ap);
 
-    return uniconf_process(uniconf_root, uniconf_path, NULL);
+        return uniconf_process(uniconf_root, uniconf_path, NULL);
+    }
+    return 0;
 }
 
 /**
@@ -284,3 +293,4 @@ long long uniconf_getNumber(const char *format, ...)
 
     return 0;
 }
+

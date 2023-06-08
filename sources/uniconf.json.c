@@ -1,10 +1,10 @@
 #include "uniconf.internal.h"
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
 static void uniconf_json_substitute(cJSON *json);
 
@@ -32,27 +32,39 @@ int uniconf_json(cJSON *root, const char *filepath, const char *branch)
         fclose(file);
 
         cJSON *json = cJSON_Parse(buffer);
-        if (json && cJSON_IsObject(json))
+        if (!json)
         {
+            uniconf_error_file(filepath, 0, "%s", cJSON_GetErrorPtr());
+        }
+        else if (branch && *branch)
+        {
+            // make branch
+            cJSON_AddItemToObject(node, branch, json);
+            uniconf_json_substitute(json);
+            count++;
+        }
+        else if(cJSON_IsObject(json) || cJSON_IsArray(json))
+        {
+            // merge json to node
             for (cJSON *element = json->child; element != NULL; element = element->next)
             {
-                cJSON *dup = cJSON_Duplicate(element, 1);
-                if (dup)
+                if (cJSON_IsObject(node))
                 {
-                    if (cJSON_ReplaceItemInObjectCaseSensitive(node, element->string, dup))
-                    {
-                        count++;
-                        uniconf_json_substitute(dup);
-                    }
-                    else
-                    {
-                        cJSON_Delete(dup);
-                    }
+                    cJSON_AddItemToObject(node, element->string, cJSON_Duplicate(element, 1));
+                }
+                else if (cJSON_IsArray(node))
+                {
+                    cJSON_AddItemToArray(node, cJSON_Duplicate(element, 1));
+                    count++;
                 }
             }
+            uniconf_json_substitute(node);
+            cJSON_Delete(json);
         }
-        cJSON_Delete(json);
-
+        else
+        {
+            uniconf_error_file(filepath, 1, "not an object or array");
+        }
         if (buffer)
         {
             free(buffer);
@@ -73,7 +85,7 @@ static void uniconf_json_substitute(cJSON *json)
     }
     else if (cJSON_IsString(json))
     {
-        char *expanded = uniconf_substitute(json->valuestring);
+        char *expanded = uniconf_substitute(NULL, cJSON_GetStringValue(json));
         if (expanded)
         {
             cJSON_SetValuestring(json, expanded);

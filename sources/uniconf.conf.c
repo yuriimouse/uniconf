@@ -1,17 +1,18 @@
 #include "uniconf.internal.h"
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <libconfig.h>
 
 static int uniconf__to_json(cJSON *node, config_setting_t *tree);
 static int uniconf__set_number(cJSON *node, const char *name, double value);
 static int uniconf__set_string(cJSON *node, const char *name, const char *value);
-static int uniconf__set_aggregate(cJSON *node, const char *name, config_setting_t *tree);
+static int uniconf__set_object(cJSON *node, const char *name, config_setting_t *tree);
+static int uniconf__set_array(cJSON *node, const char *name, config_setting_t *tree);
 /**
  * Parse the .conf file
  *
@@ -31,7 +32,14 @@ int uniconf_conf(cJSON *root, const char *filepath, const char *branch)
         config_t the_config;
         config_init(&the_config);
 
-        count = (CONFIG_FALSE == config_read_file(&the_config, filepath)) ? -(config_error_line(&the_config)) : uniconf__to_json(node, config_root_setting(&the_config));
+        if ((CONFIG_FALSE == config_read_file(&the_config, filepath)))
+        {
+            uniconf_error_file(config_error_file(&the_config), config_error_line(&the_config), config_error_text(&the_config));
+        }
+        else
+        {
+            count = uniconf__to_json(node, config_root_setting(&the_config));
+        }
 
         config_destroy(&the_config);
     }
@@ -63,8 +71,10 @@ static int uniconf__to_json(cJSON *node, config_setting_t *tree)
             break;
         case CONFIG_TYPE_ARRAY:
         case CONFIG_TYPE_LIST:
+            count = uniconf__set_array(node, config_setting_name(tree), tree);
+            break;
         case CONFIG_TYPE_GROUP:
-            count = uniconf__set_aggregate(node, config_setting_name(tree), tree);
+            count = uniconf__set_object(node, config_setting_name(tree), tree);
             break;
         }
     }
@@ -108,7 +118,7 @@ static int uniconf__set_string(cJSON *node, const char *name, const char *value)
     int count = -1;
     if (node)
     {
-        char *expanded = uniconf_substitute(value);
+        char *expanded = uniconf_substitute(NULL, value);
         if (expanded)
         {
             if (cJSON_IsObject(node) && name)
@@ -135,7 +145,26 @@ static int uniconf__set_string(cJSON *node, const char *name, const char *value)
     return count;
 }
 
-static int uniconf__set_aggregate(cJSON *node, const char *name, config_setting_t *tree)
+static int uniconf__set_all(cJSON *node, config_setting_t *tree)
+{
+    int count = 0;
+    if (node)
+    {
+        int len = config_setting_length(tree);
+        for (int i = 0; i < len; i++)
+        {
+            int ret = uniconf__to_json(node, config_setting_get_elem(tree, i));
+            if (ret < 0)
+            {
+                return -2;
+            }
+            count += ret;
+        }
+    }
+    return count;
+}
+
+static int uniconf__set_object(cJSON *node, const char *name, config_setting_t *tree)
 {
     int count = -1;
     if (node)
@@ -145,19 +174,40 @@ static int uniconf__set_aggregate(cJSON *node, const char *name, config_setting_
         {
             node = cJSON_AddObjectToObject(node, name);
         }
-
+        else if (cJSON_IsArray(node))
+        {
+            cJSON *obj = cJSON_CreateObject();
+            cJSON_AddItemToArray(node, obj);
+            node = obj;
+        }
         if (node)
         {
-            int len = config_setting_length(tree);
-            for (int i = 0; i < len; i++)
-            {
-                int ret = uniconf__to_json(node, config_setting_get_elem(tree, i));
-                if (ret < 0)
-                {
-                    return -2;
-                }
-                count += ret;
-            }
+            count = uniconf__set_all(node, tree);
+        }
+    }
+
+    return count;
+}
+
+static int uniconf__set_array(cJSON *node, const char *name, config_setting_t *tree)
+{
+    int count = -1;
+    if (node)
+    {
+        count = 0;
+        if (cJSON_IsObject(node) && name)
+        {
+            node = cJSON_AddArrayToObject(node, name);
+        }
+        else if (cJSON_IsArray(node))
+        {
+            cJSON *arr = cJSON_CreateArray();
+            cJSON_AddItemToArray(node, arr);
+            node = arr;
+        }
+        if (node)
+        {
+            count = uniconf__set_all(node, tree);
         }
     }
 

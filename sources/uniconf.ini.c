@@ -1,10 +1,10 @@
 #include "uniconf.internal.h"
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
 /**
  * Parse the .ini file
@@ -22,7 +22,6 @@ int uniconf_ini(cJSON *root, const char *filepath, const char *branch)
 {
     int count = 0;
     cJSON *node = uniconf_node(root, branch);
-    cJSON *section = NULL;
     if (node)
     {
         uniconf_FileByLine(filepath, line)
@@ -31,27 +30,30 @@ int uniconf_ini(cJSON *root, const char *filepath, const char *branch)
             {
                 if ('[' == line[0])
                 {
-                    section = uniconf_node(node, uniconf_trim(line, "]") + 1);
+                    if (strchr(line, ']'))
+                    {
+                        node = uniconf_node(node, uniconf_trim(line, "]") + 1);
+                    }
+                    else
+                    {
+                        uniconf_error_file(filepath, _lineno, "section name error");
+                    }
                 }
                 else
                 {
                     char *tok_ptr = NULL;
                     char *name = strtok_r(line, " =", &tok_ptr);
-                    char *value = strtok_r(NULL, "\n", &tok_ptr);
-
-                    value = uniconf_trim(uniconf_trim(value, "//"), "##");
-                    if ('"' == value[0])
+                    if (name)
                     {
-                        char *expanded = uniconf_substitute(value);
+                        char *value = strtok_r(NULL, "\n", &tok_ptr);
+
+                        value = uniconf_trim(uniconf_trim(value, "//"), "##");
+                        char *expanded = uniconf_substitute(NULL, value);
                         if (expanded)
                         {
-                            count += uniconf_set(section ? section : node, name, uniconf_unquote(expanded));
+                            count += uniconf_set(node, name, uniconf_unquote(expanded));
                             free(expanded);
                         }
-                    }
-                    else
-                    {
-                        count += uniconf_set(section ? section : node, name, uniconf_unquote(value));
                     }
                 }
             }

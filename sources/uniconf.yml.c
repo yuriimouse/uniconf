@@ -1,10 +1,10 @@
 #include "uniconf.internal.h"
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <lists.h>
 
@@ -14,52 +14,109 @@ struct yaml_level
     cJSON *node;
 };
 
-static cJSON *uniconf_yml__toArray(cJSON *node, char *value)
+static cJSON *uniconf_yml__string(char *value)
 {
-    cJSON *ret = NULL;
-    if (cJSON_IsNull(node))
+    if (value && *value)
     {
-        node->type = cJSON_Array;
+        cJSON *item = NULL;
+        int slen = strlen(value);
+        if ((slen > 2) && ('"' == value[0]) && ('"' == value[slen-1]))
+        {
+            char *expanded = uniconf_substitute(NULL, value);
+            item = cJSON_CreateString(uniconf_unquote(expanded));
+            FREE_AND_NULL(expanded);
+        }
+        else
+        {
+            item = cJSON_CreateString(uniconf_unquote(value));
+        }
+        return item;
     }
-    if (cJSON_IsArray(node))
-    {
-        char *expanded = uniconf_substitute(uniconf_trim(value + 1, "#"));
-        ret = cJSON_CreateString(expanded);
-        cJSON_AddItemToArray(node, ret);
-        free(expanded);
-    }
-    return ret;
+    return cJSON_CreateNull();
 }
 
-static cJSON *uniconf_yml__toObject(cJSON *node, char *value)
+static cJSON *uniconf_yml__object(cJSON *node, char *name, char *value)
 {
-    if (cJSON_IsNull(node))
+    cJSON *item = uniconf_yml__string(value);
+    if (cJSON_AddItemToObject(node, name, item))
     {
-        node->type = cJSON_Object;
+        return item;
     }
-    if (cJSON_IsObject(node))
+    cJSON_Delete(item);
+    return NULL;
+}
+
+static cJSON *uniconf_yml__array(cJSON *node, char *value)
+{
+    cJSON *item = uniconf_yml__string(value);
+    if (cJSON_AddItemToArray(node, item))
     {
-        return cJSON_AddNullToObject(node, uniconf_trim(value, ":"));
+        return item;
+    }
+    cJSON_Delete(item);
+    return NULL;
+}
+
+static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
+{
+    if (STR_EQUAL(name, "-"))
+    {
+        // array element
+        if (cJSON_IsNull(node))
+        {
+            // starts as array
+            node->type = cJSON_Array;
+        }
+        return cJSON_IsArray(node) ? uniconf_yml__array(node, value) : NULL;
+    }
+    else // named
+    {
+        char *pure = uniconf_trim(name, ":");
+        // object element
+        if (cJSON_IsNull(node))
+        {
+            // starts as object
+            node->type = cJSON_Object;
+        }
+        return cJSON_IsObject(node) ? uniconf_yml__object(node, pure, value) : NULL;
     }
     return NULL;
 }
 
-static cJSON *uniconf_yml__append(cJSON *node, char *value)
+static list_t *stack = NULL;
+static struct yaml_level *stack_push(int pfx, cJSON *node)
 {
-    if (node)
+    if (!stack)
     {
-        cJSON *ret = NULL;
-        if ('-' == value[0])
-        {
-            ret = uniconf_yml__toArray(node, value);
-        }
-        else if (strchr(value, ':'))
-        {
-            ret = uniconf_yml__toObject(node, value);
-        }
-        return ret;
+        stack = list_construct();
     }
-    return NULL;
+    struct yaml_level *level = malloc(sizeof(struct yaml_level));
+    level->prefix = pfx;
+    level->node = node;
+    list_push(stack, (void *)level);
+
+    return level;
+}
+static struct yaml_level *stack_get()
+{
+    if (!stack)
+    {
+        stack = list_construct();
+    }
+    return (struct yaml_level *)list_get(stack);
+}
+// static struct yaml_level *stack_pop()
+// {
+//     if (!stack)
+//     {
+//         stack = list_construct();
+//     }
+//     return (struct yaml_level *)list_pop(stack);
+// }
+static struct yaml_level *stack_pop_get()
+{
+    list_pop(stack);
+    return (struct yaml_level *)list_get(stack);
 }
 
 /**
@@ -76,56 +133,77 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
     cJSON *node = uniconf_node(root, branch);
     if (node)
     {
-        list_t *stack = list_construct();
+        int pfxlen = 0;
+        char *name = NULL;
+        char *value = NULL;
+        cJSON *last = NULL;
         struct yaml_level *level = NULL;
-
         uniconf_FileByLine(filepath, line)
         {
             if (!uniconf_is_commented(line, "#"))
             {
-                char *prefix = NULL;
-                int nnn = 0;
-                char *value = NULL;
-                sscanf(line, "%m[ ]%n", &prefix, &nnn);
-                sscanf(line + nnn, "%m[^#]", &value);
+                pfxlen = 0;
+                sscanf(line, "%*[ ]%n", &pfxlen);
+                sscanf(line + pfxlen, "%ms %m[^#\n]", &name, &value);
 
-                level = list_get(stack);
-                if (level && nnn <= level->prefix)
+                level = stack_get(); // current level
+                if (!level)
                 {
-                    while (level && nnn < level->prefix)
+                    // first line
+                    if (pfxlen > 0)
                     {
-                        free(list_pop(stack));
-                        level = list_get(stack);
+                        uniconf_error_file(filepath, _lineno, "leading spaces are not allowed in the first line");
+                        break;
                     }
-
-                    if (level && nnn == level->prefix)
+                    level = stack_push(0, node);
+                    last = uniconf_yml__add(node, name, value);
+                }
+                else if (pfxlen == level->prefix)
+                {
+                    // same level
+                    last = uniconf_yml__add(level->node, name, value);
+                    if (!last)
                     {
-                        uniconf_yml__append(level->node, value);
-                        count++;
-                    }
-                    else
-                    {
-                        level = malloc(sizeof(struct yaml_level));
-                        level->prefix = nnn;
-                        level->node = uniconf_yml__append(node, value);
-                        list_push(stack, level);
-                        count++;
+                        uniconf_error_file(filepath, _lineno, "can't add it to the current level ('%s':'%s')", name, value);
+                        break;
                     }
                 }
-                else
+                else if (pfxlen > level->prefix)
                 {
-                    level = malloc(sizeof(struct yaml_level));
-                    level->prefix = nnn;
-                    level->node = uniconf_yml__append(node, value);
-                    list_push(stack, level);
-                    count++;
+                    // next level
+                    level = stack_push(pfxlen, last);
+                    last = uniconf_yml__add(level->node, name, value);
+                    if (!last)
+                    {
+                        uniconf_error_file(filepath, _lineno, "can't expand the current level");
+                        break;
+                    }
                 }
-                FREE_AND_NULL(prefix);
-                FREE_AND_NULL(value);
+                else // if(pfxlen < level->prefix)
+                {
+                    // previous level
+                    while ((pfxlen < level->prefix))
+                    {
+                        level = stack_pop_get();
+                    }
+                    if (pfxlen != level->prefix)
+                    {
+                        uniconf_error_file(filepath, _lineno, "the uncorrect level");
+                        break;
+                    }
+                    last = uniconf_yml__add(level->node, name, value);
+                    if (!last)
+                    {
+                        uniconf_error_file(filepath, _lineno, "can't continue expanding the current level");
+                        break;
+                    }
+                }
             }
         }
         uniconf_EndByLine(line);
-        list_destruct(stack,NULL);
+        FREE_AND_NULL(name);
+        FREE_AND_NULL(value);
+        list_destruct(stack, NULL);
     }
 
     return count;

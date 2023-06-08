@@ -123,18 +123,20 @@ char *uniconf_trim(char *str, char *trail)
         {
             str++;
         }
+
         char *ptr = strstr(str, trail);
         if (ptr)
         {
-            ptr[0] = '\0';
+            *ptr = '\0';
         }
         else
         {
             ptr = str + strlen(str);
         }
-        while (ptr > str && isspace(*ptr))
+        --ptr;
+        while ((ptr > str) && isspace(*ptr)) //
         {
-            ptr[0] = '\0';
+            *ptr = '\0';
             ptr--;
         }
     }
@@ -166,88 +168,16 @@ char *uniconf_unquote(char *str)
 }
 
 /**
- * Try substitute named vars in the string.
- * Must be freed!
- *
- * @param str
- *
- * @return char*
- */
-char *uniconf_substitute(const char *str)
-{
-    char *result = NULL;
-    if (str)
-    {
-
-        char *buffer = strdup(str);
-        int skip = 0;
-        while (strchr(buffer + skip, '$'))
-        {
-            char *prefix = NULL;
-            // copy prefix
-            sscanf(buffer + skip, "%m[^$]", &prefix);
-
-            if (prefix)
-            {
-                asprintf(&result, "%s%s", result ? result : "", prefix);
-                skip += strlen(prefix);
-            }
-
-            skip++;
-            // find var name
-            char rbracket = '\0';
-            switch (*(buffer + skip))
-            {
-            case '(':
-                rbracket = ')';
-                break;
-            case '[':
-                rbracket = ']';
-                break;
-            case '{':
-                rbracket = '}';
-                break;
-            case '<':
-                rbracket = '>';
-                break;
-            default:
-                rbracket = '\0';
-            }
-
-            char *ptr = strchr(buffer + skip, rbracket);
-            char *var = uniconf_get_vardata(buffer + skip, ptr ? ptr - buffer - skip : 0, "");
-            if (!rbracket || !var)
-            {
-                asprintf(&result, "%s$%s", result ? result : "", buffer + skip);
-                skip = strlen(buffer);
-            }
-            else
-            {
-                asprintf(&result, "%s%s", result ? result : "", var);
-                skip = ptr - buffer + 1;
-            }
-            if (var)
-            {
-                free(var);
-                var = NULL;
-            }
-        }
-        asprintf(&result, "%s%s", result ? result : "", buffer + skip);
-        free(buffer);
-    }
-    return result;
-}
-
-/**
  * Find the variable in the tree
  *
+ * @param root
  * @param varname
  *
  * @return cJSON*
  */
-cJSON *uniconf_vardata(char *varname)
+cJSON *uniconf_vardata(cJSON *root, char *varname)
 {
-    cJSON *var = uniconf_get_root();
+    cJSON *var = root ? root : uniconf_get_root();
     if (varname)
     {
         for (char *sptr, *token = strtok_r(varname, PATH_DELIM, &sptr); var && token; token = strtok_r(NULL, PATH_DELIM, &sptr))
@@ -259,52 +189,79 @@ cJSON *uniconf_vardata(char *varname)
 }
 
 /**
- * Gets the named var from the json structure
+ * Try substitute named vars in the string.
+ * Must be freed!
  *
+ * @param root
  * @param str
- * @param len
- * @param not_found
- * @param ...
  *
  * @return char*
  */
-char *uniconf_get_vardata(char *str, int len, char *not_found, ...)
+char *uniconf_substitute(cJSON *root, const char *str)
 {
-    if (!str || !len)
-    {
-        return NULL;
-    }
-
-    char *varname = NULL;
-    asprintf(&varname, "%.*s", len - 2, str + 1);
-
-    cJSON *var = uniconf_vardata(varname);
-    free(varname);
-
     char *result = NULL;
-    if (!var)
+    if (str)
     {
-        if (not_found)
+        char *buffer = strdup(str);
+        char *pointer = buffer;
+        while (strchr(pointer, '$'))
         {
-            va_list ap;
-            va_start(ap, not_found);
-            vasprintf(&result, not_found, ap);
-            va_end(ap);
-        }
-    }
-    else if (cJSON_IsString(var))
-    {
-        result = strdup(var->valuestring);
-    }
-    else if (cJSON_IsNumber(var))
-    {
-        asprintf(&result, "%.0f", var->valuedouble);
-    }
-    else
-    {
-        result = strdup("");
-    }
+            // get prefix
+            char *prefix = NULL;
+            int pfxlen = 0;
+            sscanf(pointer, "%m[^$]%n", &prefix, &pfxlen);
+            if (prefix)
+            {
+                asprintf(&result, "%s%s", result ? result : "", prefix);
+                FREE_AND_NULL(prefix);
+            }
+            pointer += pfxlen; // on $
 
+            // get var
+            char lbr = '\0';
+            char rbr = '\0';
+            char *varname = NULL;
+            int len = 0;
+            sscanf(pointer, "$%c%m[^])>}]%c%n", &lbr, &varname, &rbr, &len);
+
+            cJSON *var = NULL;
+            switch (lbr)
+            {
+            case '(':
+                var = (')' == rbr) ? uniconf_vardata(root, varname) : NULL;
+                break;
+            case '[':
+                var = (']' == rbr) ? uniconf_vardata(root, varname) : NULL;
+                break;
+            case '{':
+                var = ('}' == rbr) ? uniconf_vardata(root, varname) : NULL;
+                break;
+            case '<':
+                var = ('>' == rbr) ? uniconf_vardata(root, varname) : NULL;
+                break;
+            }
+            FREE_AND_NULL(varname);
+
+            if (var)
+            {
+                if (cJSON_IsString(var))
+                {
+                    asprintf(&result, "%s%s", result ? result : "", var->valuestring);
+                }
+                else if (cJSON_IsNumber(var))
+                {
+                    asprintf(&result, "%s%.0f", result ? result : "", var->valuedouble);
+                }
+                pointer += len;
+            }
+            else
+            {
+                break;
+            }
+        }
+        asprintf(&result, "%s%s", result ? result : "", pointer);
+        free(buffer);
+    }
     return result;
 }
 
