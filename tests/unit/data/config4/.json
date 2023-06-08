@@ -1,0 +1,10 @@
+{
+    "foo": "bar",
+    "bar": "baz.${foo}",
+    "bazz": {
+        "some": "value"
+    },
+    "barr": [
+        "list"
+    ]
+}

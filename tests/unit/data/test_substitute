@@ -1,0 +1,3 @@
+'some $(foo) here' 'some FOOVAL here'
+'some $<bar> here' 'some BARVAL here'
+'some $[baz] & ${foo} here' 'some BAZVAL & FOOVAL here'

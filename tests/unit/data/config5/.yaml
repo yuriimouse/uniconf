@@ -1,0 +1,11 @@
+foo: bar
+bar: "baz.${foo}"
+bazz:
+  some: "value"
+  other: baz.${foo}
+barr:
+  -
+    wer: gdfgd
+  - 333
+  - 4444
+  - another

@@ -1,0 +1,1 @@
+./tests/unit/data/config5 {"foo":"bar","bar":"baz.bar","bazz":{"some":"value","other":"baz.${foo}"},"barr":[{"wer":"gdfgd"},"333","4444","another"]}

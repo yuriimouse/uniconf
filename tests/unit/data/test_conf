@@ -1,0 +1,1 @@
+./tests/unit/data/config3 {"foo":"bar","bar":"baz.bar","bazz":{"some":"value"},"barr":["list"]}

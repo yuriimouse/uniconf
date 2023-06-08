@@ -1,0 +1,3 @@
+#"%ms '%m[^']' '%m[^']'"
+foo 'foo val' '{"foo":"foo val"}'
+bar 'bar val' '{"foo":"foo val","bar":"bar val"}'

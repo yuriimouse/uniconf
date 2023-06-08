@@ -1,0 +1,1 @@
+./tests/unit/data/config2 {"foo":"bar","baz":"foo.bar.foo","section":{"bar":"bar.foo.bar.foo.foo"}}
