@@ -18,5 +18,7 @@ RUN yum install texinfo -y
 RUN git clone https://github.com/hyperrealm/libconfig.git && cd libconfig && autoreconf || autoreconf && ./configure && make && make install && cd .. && rm -rf libconfig
 # Install CUnit of needed version
 RUN yum install -y CUnit-devel
+# lists
+RUN git clone https://github.com/yuriimouse/lists.git && cd lists/ && make install && cd .. && rm -rf lists/
 #
 RUN export LD_LIBRARY_PATH=/usr/local/custom/lib/:/usr/local/lib/

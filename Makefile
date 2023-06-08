@@ -54,7 +54,7 @@ TEST_OBJECT_LINKS = $(addprefix $(TEST_OBJ_DIR), $(TEST_SRC_FILES:.c=.o))
 test: $(TEST_BIN)
 
 $(TEST_BIN): $(TEST_OBJECT_LINKS)
-	@$(CC) -L/usr/lib64  -lcunit -L/usr/local/lib -L$(INSTALL_PATH)lib -lconfig -lcjson -l$(LIB_NAME) -o $@ $^
+	@$(CC) -L/usr/lib64  -lcunit -L/usr/local/lib -L$(INSTALL_PATH)lib -lconfig -lcjson -llists -l$(LIB_NAME) -o $@ $^
 	@$(PRINTF)	"$(WARN_COLOR)\n  Linking...  $(TEST_BIN) $(OK_COLOR)         [✓]\n  tests created$(NO_COLOR)\n"
 	@rm -rf $(TEST_OBJ_DIR)
 
