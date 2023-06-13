@@ -115,7 +115,8 @@ static struct yaml_level *stack_get()
 // }
 static struct yaml_level *stack_pop_get()
 {
-    list_pop(stack);
+    void *lvl = list_pop(stack);
+    FREE_AND_NULL(lvl);
     return (struct yaml_level *)list_get(stack);
 }
 
