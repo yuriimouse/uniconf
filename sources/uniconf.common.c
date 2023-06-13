@@ -209,6 +209,7 @@ char *uniconf_substitute(cJSON *root, const char *str)
             // get prefix
             char *prefix = NULL;
             int pfxlen = 0;
+            FREE_AND_NULL(prefix);
             sscanf(pointer, "%m[^$]%n", &prefix, &pfxlen);
             if (prefix)
             {
@@ -222,6 +223,7 @@ char *uniconf_substitute(cJSON *root, const char *str)
             char rbr = '\0';
             char *varname = NULL;
             int len = 0;
+            FREE_AND_NULL(varname);
             sscanf(pointer, "$%c%m[^])>}]%c%n", &lbr, &varname, &rbr, &len);
 
             cJSON *var = NULL;

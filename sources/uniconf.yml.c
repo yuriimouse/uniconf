@@ -143,6 +143,8 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
             if (!uniconf_is_commented(line, "#"))
             {
                 pfxlen = 0;
+                FREE_AND_NULL(name);
+                FREE_AND_NULL(value);
                 sscanf(line, "%*[ ]%n", &pfxlen);
                 sscanf(line + pfxlen, "%ms %m[^#\n]", &name, &value);
 
