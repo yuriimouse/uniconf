@@ -206,7 +206,7 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
         uniconf_EndByLine(line);
         FREE_AND_NULL(name);
         FREE_AND_NULL(value);
-        list_destruct(stack, NULL);
+        stack = list_destruct(stack, free);
     }
 
     return count;
