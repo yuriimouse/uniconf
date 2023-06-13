@@ -213,7 +213,11 @@ char *uniconf_substitute(cJSON *root, const char *str)
             sscanf(pointer, "%m[^$]%n", &prefix, &pfxlen);
             if (prefix)
             {
-                asprintf(&result, "%s%s", result ? result : "", prefix);
+                char *temp = NULL;
+                asprintf(&temp, "%s%s", result ? result : "", prefix);
+                if (result)
+                    free(result);
+                result = temp;
                 FREE_AND_NULL(prefix);
             }
             pointer += pfxlen; // on $
@@ -248,11 +252,19 @@ char *uniconf_substitute(cJSON *root, const char *str)
             {
                 if (cJSON_IsString(var))
                 {
-                    asprintf(&result, "%s%s", result ? result : "", var->valuestring);
+                    char *temp = NULL;
+                    asprintf(&temp, "%s%s", result ? result : "", var->valuestring);
+                    if (result)
+                        free(result);
+                    result = temp;
                 }
                 else if (cJSON_IsNumber(var))
                 {
-                    asprintf(&result, "%s%.0f", result ? result : "", var->valuedouble);
+                    char *temp = NULL;
+                    asprintf(&temp, "%s%.0f", result ? result : "", var->valuedouble);
+                    if (result)
+                        free(result);
+                    result = temp;
                 }
                 pointer += len;
             }
@@ -261,7 +273,11 @@ char *uniconf_substitute(cJSON *root, const char *str)
                 break;
             }
         }
-        asprintf(&result, "%s%s", result ? result : "", pointer);
+        char *temp = NULL;
+        asprintf(&temp, "%s%s", result ? result : "", pointer);
+        if (result)
+            free(result);
+        result = temp;
         free(buffer);
     }
     return result;
