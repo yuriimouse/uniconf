@@ -32,6 +32,7 @@ void uniconf_destruct();
 uniconf_t uniconf_getObject(const char *format, ...);
 char *uniconf_getString(const char *format, ...);
 long long uniconf_getNumber(const char *format, ...);
+int uniconf_getBoolean(const char *format, ...);
 
 #define uniconf_IsArray(element) cJSON_IsArray(element)
 #define uniconf_IsObject(element) cJSON_IsObject(element)

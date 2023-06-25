@@ -54,8 +54,9 @@ int uniconf_check(const char *path, const char *name)
     if (filename)
     {
         int result = stat(filename, &path_stat);
+        int errNo = errno;
         free(filename);
-        return result ? -errno
+        return result ? -errNo
                       : S_ISDIR(path_stat.st_mode);
     }
 

@@ -294,3 +294,73 @@ long long uniconf_getNumber(const char *format, ...)
     return 0;
 }
 
+/**
+ * @brief Checks if a word is in the string
+ *
+ * @param str
+ * @param word
+ * @param delim
+ * @return int
+ */
+static int stringFound(char *str, char *word, char *delim)
+{
+    int ret = 0;
+    if (str && word && delim)
+    {
+        char *dup = strdup(str);
+        for (char *_sptr = NULL, *token = strtok_r(str, delim, &_sptr); token; token = strtok_r(NULL, delim, &_sptr))
+        {
+            ret = (word && token && !strcasecmp(word, token));
+            if (ret)
+            {
+                break;
+            }
+        }
+        dup = dup ? free(dup), NULL : NULL;
+    }
+    return ret;
+}
+
+/**
+ * @brief Treats the value as boolean
+ *
+ * @param format
+ * @param ...
+ * @return int
+ */
+int uniconf_getBoolean(const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    uniconf_t object = uniconf_object_v(uniconf_get_root(), format, ap);
+    va_end(ap);
+
+    if (object)
+    {
+        if (cJSON_IsString(object))
+        {
+            char *val = cJSON_GetStringValue(object);
+            if (val)
+            {
+                if (stringFound("True=On=Yes", val, "="))
+                {
+                    return 1;
+                }
+                else if (stringFound("False=Off=No", val, "="))
+                {
+                    return 0;
+                }
+            }
+            return -1;
+        }
+        else if (cJSON_IsNumber(object))
+        {
+            return (int)cJSON_GetNumberValue(object);
+        }
+        else if (uniconf_IsComplex(object))
+        {
+            return (int)cJSON_GetArraySize(object);
+        }
+    }
+    return 0;
+}
