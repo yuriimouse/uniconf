@@ -301,9 +301,14 @@ int uniconf_set(cJSON *node, char *name, char *value)
         {
             cJSON_DeleteItemFromObject(node, name);
         }
-        if (cJSON_AddStringToObject(node, name, value))
+        cJSON *item = cJSON_CreateString(value);
+        if (item)
         {
-            return 1;
+            if (cJSON_AddItemToObject(node, name, item))
+            {
+                return 1;
+            }
+            cJSON_Delete(item);
         }
     }
     return 0;

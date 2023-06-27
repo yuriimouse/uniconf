@@ -22,8 +22,6 @@
 #include <stdio.h>
 #include <string.h>
 
-static char *
-    uniconf_path = NULL;
 static uniconf_t
     uniconf_root = NULL;
 
@@ -185,30 +183,24 @@ static int uniconf_file(uniconf_t root, const char *path, const char *filename)
  */
 int uniconf_construct(const char *format, ...)
 {
+    int ret = 0;
     // clear previous
-    if (uniconf_root)
-    {
-        cJSON_Delete(uniconf_root);
-    }
-    if (uniconf_path)
-    {
-        free(uniconf_path);
-        uniconf_path = NULL;
-    }
-
+    uniconf_destruct();
     // construct
     uniconf_root = cJSON_CreateObject();
 
     if (format)
     {
+        char *uniconf_path = NULL;
         va_list ap;
         va_start(ap, format);
         vasprintf(&uniconf_path, format, ap);
         va_end(ap);
 
-        return uniconf_process(uniconf_root, uniconf_path, NULL);
+        ret = uniconf_process(uniconf_root, uniconf_path, NULL);
+        FREE_AND_NULL(uniconf_path);
     }
-    return 0;
+    return ret;
 }
 
 /**
@@ -217,8 +209,11 @@ int uniconf_construct(const char *format, ...)
  */
 void uniconf_destruct()
 {
-    cJSON_Delete(uniconf_root);
-    uniconf_root = NULL;
+    if (uniconf_root)
+    {
+        cJSON_Delete(uniconf_root);
+        uniconf_root = NULL;
+    }
 }
 
 static uniconf_t uniconf_object_v(uniconf_t object, const char *format, va_list ap)
