@@ -151,6 +151,10 @@ static int uniconf_file(uniconf_t root, const char *path, const char *filename)
         {
             ret = uniconf_ini(root, filepath, name);
         }
+        else if (!strcmp("list", ext))
+        {
+            ret = uniconf_list(root, filepath, name);
+        }
         else if (!strcmp("conf", ext))
         {
             ret = uniconf_conf(root, filepath, name);

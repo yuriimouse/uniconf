@@ -38,6 +38,7 @@ void uniconf_error_file(const char *filename, int line, const char *message, ...
 // parsers
 int uniconf_env(cJSON *root, const char *filepath, const char *branch);
 int uniconf_ini(cJSON *root, const char *filepath, const char *branch);
+int uniconf_list(cJSON *root, const char *filepath, const char *branch);
 int uniconf_json(cJSON *root, const char *filepath, const char *branch);
 int uniconf_conf(cJSON *root, const char *filepath, const char *branch);
 int uniconf_yml(cJSON *root, const char *filepath, const char *branch);
