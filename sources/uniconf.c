@@ -312,7 +312,7 @@ static int stringFound(char *str, char *word, char *delim)
     if (str && word && delim)
     {
         char *dup = strdup(str);
-        for (char *_sptr = NULL, *token = strtok_r(str, delim, &_sptr); token; token = strtok_r(NULL, delim, &_sptr))
+        for (char *_sptr = NULL, *token = strtok_r(dup, delim, &_sptr); token; token = strtok_r(NULL, delim, &_sptr))
         {
             ret = (word && token && !strcasecmp(word, token));
             if (ret)
