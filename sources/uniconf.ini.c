@@ -41,20 +41,21 @@ int uniconf_ini(cJSON *root, const char *filepath, const char *branch)
                 }
                 else
                 {
-                    char *tok_ptr = NULL;
-                    char *name = strtok_r(line, " =", &tok_ptr);
-                    if (name)
-                    {
-                        char *value = strtok_r(NULL, "\n", &tok_ptr);
+                    char *name = NULL;
+                    char *value = NULL;
 
-                        value = uniconf_trim(uniconf_trim(value, "//"), "##");
-                        char *expanded = uniconf_substitute(NULL, value);
+                    sscanf(line, "%ms = %m[^\n]", &name, &value);
+                    if (name && value)
+                    {
+                        char *expanded = uniconf_substitute(NULL, uniconf_trim(uniconf_trim(value, "//"), "##"));
                         if (expanded)
                         {
                             count += uniconf_set(node, name, uniconf_unquote(expanded));
                             free(expanded);
                         }
                     }
+                    FREE_AND_NULL(name);
+                    FREE_AND_NULL(value);
                 }
             }
         }

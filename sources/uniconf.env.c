@@ -29,10 +29,11 @@ int uniconf_env(cJSON *root, const char *filepath, const char *branch)
         {
             if (!uniconf_is_commented(line, "#"))
             {
-                char *tok_ptr = NULL;
-                char *name = strtok_r(line, " =", &tok_ptr);
-                char *value = strtok_r(NULL, "\n", &tok_ptr);
-                if (name)
+                char *name = NULL;
+                char *value = NULL;
+
+                sscanf(line, "%ms = %m[^\n]", &name, &value);
+                if (name && value)
                 {
                     value = uniconf_trim(value, "###");
                     char *expanded = uniconf_substitute(NULL, value);
@@ -42,6 +43,8 @@ int uniconf_env(cJSON *root, const char *filepath, const char *branch)
                         free(expanded);
                     }
                 }
+                FREE_AND_NULL(name);
+                FREE_AND_NULL(value);
             }
         }
         uniconf_EndByLine(line);
