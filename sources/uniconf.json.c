@@ -21,10 +21,10 @@ static void uniconf_json_substitute(cJSON *json);
 int uniconf_json(cJSON *root, const char *filepath, const char *branch)
 {
     int count = 0;
-    cJSON *node = uniconf_node(root, branch);
+    // cJSON *node = uniconf_node(root, branch);
     FILE *file = NULL;
 
-    if (node && filepath && (file = fopen(filepath, "rt")))
+    if (root && filepath && (file = fopen(filepath, "rt")))
     {
         char *buffer = NULL;
         size_t len = 0;
@@ -39,7 +39,7 @@ int uniconf_json(cJSON *root, const char *filepath, const char *branch)
         else if (branch && *branch)
         {
             // make branch
-            cJSON_AddItemToObject(node, branch, json);
+            cJSON_AddItemToObject(root, branch, json);
             uniconf_json_substitute(json);
             count++;
         }
@@ -48,17 +48,17 @@ int uniconf_json(cJSON *root, const char *filepath, const char *branch)
             // merge json to node
             for (cJSON *element = json->child; element != NULL; element = element->next)
             {
-                if (cJSON_IsObject(node))
+                if (cJSON_IsObject(root))
                 {
-                    cJSON_AddItemToObject(node, element->string, cJSON_Duplicate(element, 1));
+                    cJSON_AddItemToObject(root, element->string, cJSON_Duplicate(element, 1));
                 }
-                else if (cJSON_IsArray(node))
+                else if (cJSON_IsArray(root))
                 {
-                    cJSON_AddItemToArray(node, cJSON_Duplicate(element, 1));
+                    cJSON_AddItemToArray(root, cJSON_Duplicate(element, 1));
                     count++;
                 }
             }
-            uniconf_json_substitute(node);
+            uniconf_json_substitute(root);
             cJSON_Delete(json);
         }
         else

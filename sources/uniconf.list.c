@@ -21,9 +21,10 @@ int uniconf_list(cJSON *root, const char *filepath, const char *branch)
     cJSON *node = uniconf_node(root, branch);
     if (node)
     {
-        if (cJSON_IsNull(node))
+        if (!cJSON_IsArray(node) && branch)
         {
-            node->type = cJSON_Array;
+            node = cJSON_CreateArray();
+            cJSON_ReplaceItemInObjectCaseSensitive(root,branch,node);
         }
         if (cJSON_IsArray(node))
         {
