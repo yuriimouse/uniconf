@@ -20,7 +20,7 @@ static cJSON *uniconf_yml__string(char *value)
     {
         cJSON *item = NULL;
         int slen = strlen(value);
-        if ((slen > 2) && ('"' == value[0]) && ('"' == value[slen-1]))
+        if ((slen > 2) && ('"' == value[0]) && ('"' == value[slen - 1]))
         {
             char *expanded = uniconf_substitute(NULL, value);
             item = cJSON_CreateString(uniconf_unquote(expanded));
@@ -141,7 +141,7 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
         struct yaml_level *level = NULL;
         uniconf_FileByLine(filepath, line)
         {
-            if (!uniconf_is_commented(line, "#"))
+            if (!(uniconf_is_commented(line, "#") || !uniconf_is_commented(line, "---")))
             {
                 pfxlen = 0;
                 FREE_AND_NULL(name);
@@ -149,56 +149,59 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
                 sscanf(line, "%*[ ]%n", &pfxlen);
                 sscanf(line + pfxlen, "%ms %m[^#\n]", &name, &value);
 
-                level = stack_get(); // current level
-                if (!level)
+                if (name)
                 {
-                    // first line
-                    if (pfxlen > 0)
+                    level = stack_get(); // current level
+                    if (!level)
                     {
-                        uniconf_error_file(filepath, _lineno, "leading spaces are not allowed in the first line");
-                        break;
+                        // first line
+                        if (pfxlen > 0)
+                        {
+                            uniconf_error_file(filepath, _lineno, "leading spaces are not allowed in the first line");
+                            break;
+                        }
+                        level = stack_push(0, node);
+                        last = uniconf_yml__add(node, name, value);
                     }
-                    level = stack_push(0, node);
-                    last = uniconf_yml__add(node, name, value);
-                }
-                else if (pfxlen == level->prefix)
-                {
-                    // same level
-                    last = uniconf_yml__add(level->node, name, value);
-                    if (!last)
+                    else if (pfxlen == level->prefix)
                     {
-                        uniconf_error_file(filepath, _lineno, "can't add it to the current level ('%s':'%s')", name, value);
-                        break;
+                        // same level
+                        last = uniconf_yml__add(level->node, name, value);
+                        if (!last)
+                        {
+                            uniconf_error_file(filepath, _lineno, "can't add it to the current level ('%s':'%s')", name, value);
+                            break;
+                        }
                     }
-                }
-                else if (pfxlen > level->prefix)
-                {
-                    // next level
-                    level = stack_push(pfxlen, last);
-                    last = uniconf_yml__add(level->node, name, value);
-                    if (!last)
+                    else if (pfxlen > level->prefix)
                     {
-                        uniconf_error_file(filepath, _lineno, "can't expand the current level");
-                        break;
+                        // next level
+                        level = stack_push(pfxlen, last);
+                        last = uniconf_yml__add(level->node, name, value);
+                        if (!last)
+                        {
+                            uniconf_error_file(filepath, _lineno, "can't expand the current level");
+                            break;
+                        }
                     }
-                }
-                else // if(pfxlen < level->prefix)
-                {
-                    // previous level
-                    while ((pfxlen < level->prefix))
+                    else // if(pfxlen < level->prefix)
                     {
-                        level = stack_pop_get();
-                    }
-                    if (pfxlen != level->prefix)
-                    {
-                        uniconf_error_file(filepath, _lineno, "the uncorrect level");
-                        break;
-                    }
-                    last = uniconf_yml__add(level->node, name, value);
-                    if (!last)
-                    {
-                        uniconf_error_file(filepath, _lineno, "can't continue expanding the current level");
-                        break;
+                        // previous level
+                        while ((pfxlen < level->prefix))
+                        {
+                            level = stack_pop_get();
+                        }
+                        if (pfxlen != level->prefix)
+                        {
+                            uniconf_error_file(filepath, _lineno, "the uncorrect level");
+                            break;
+                        }
+                        last = uniconf_yml__add(level->node, name, value);
+                        if (!last)
+                        {
+                            uniconf_error_file(filepath, _lineno, "can't continue expanding the current level");
+                            break;
+                        }
                     }
                 }
             }
