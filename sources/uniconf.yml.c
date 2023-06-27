@@ -141,7 +141,7 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
         struct yaml_level *level = NULL;
         uniconf_FileByLine(filepath, line)
         {
-            if (!(uniconf_is_commented(line, "#") || !uniconf_is_commented(line, "---")))
+            if (!(uniconf_is_commented(line, "#") || uniconf_is_commented(line, "---")))
             {
                 pfxlen = 0;
                 FREE_AND_NULL(name);

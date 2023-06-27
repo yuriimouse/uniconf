@@ -74,7 +74,7 @@ cJSON *uniconf_node(cJSON *root, const char *name)
 {
     cJSON *node = root;
 
-    if (name && strlen(name) > 0)
+    if (name && *name)
     {
         node = cJSON_GetObjectItemCaseSensitive(root, name);
         if (!node)
