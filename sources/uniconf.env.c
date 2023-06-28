@@ -32,7 +32,7 @@ int uniconf_env(cJSON *root, const char *filepath, const char *branch)
                 char *name = NULL;
                 char *value = NULL;
 
-                sscanf(line, "%ms = %m[^\n]", &name, &value);
+                sscanf(line, "%ms = %m[^\r\n]", &name, &value);
                 if (name && value)
                 {
                     value = uniconf_trim(value, "###");
