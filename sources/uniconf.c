@@ -90,13 +90,16 @@ static int uniconf_dir(uniconf_t root, const char *path, const char *name)
             {
                 ext[0] = '\0';
             }
-            root = uniconf_node(root, branch);
+            if (*branch)
+            {
+                root = uniconf_node(root, branch);
+            }
             free(branch);
         }
 
         struct dirent **namelist;
 
-        int n = scandir(pathname, &namelist, NULL, NULL);
+        int n = scandir(pathname, &namelist, NULL, alphasort);
         if (n < 0)
         {
             free(pathname);

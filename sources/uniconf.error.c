@@ -61,6 +61,6 @@ void uniconf_error_file(const char *filename, int line, const char *message, ...
     vasprintf(&text, message, ap);
     va_end(ap);
 
-    uniconf_error("ERROR in file '%s' at line %d: %s", filename, line, text);
+    uniconf_error("ERROR: in file '%s' at line %d: %s", filename, line, text);
     FREE_AND_NULL(text);
 }

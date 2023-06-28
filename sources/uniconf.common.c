@@ -210,7 +210,6 @@ char *uniconf_substitute(cJSON *root, const char *str)
             // get prefix
             char *prefix = NULL;
             int pfxlen = 0;
-            FREE_AND_NULL(prefix);
             sscanf(pointer, "%m[^$]%n", &prefix, &pfxlen);
             if (prefix)
             {
@@ -228,7 +227,6 @@ char *uniconf_substitute(cJSON *root, const char *str)
             char rbr = '\0';
             char *varname = NULL;
             int len = 0;
-            FREE_AND_NULL(varname);
             sscanf(pointer, "$%c%m[^])>}]%c%n", &lbr, &varname, &rbr, &len);
 
             cJSON *var = NULL;
@@ -247,7 +245,6 @@ char *uniconf_substitute(cJSON *root, const char *str)
                 var = ('>' == rbr) ? uniconf_vardata(root, varname) : NULL;
                 break;
             }
-            FREE_AND_NULL(varname);
 
             if (var)
             {
@@ -271,8 +268,10 @@ char *uniconf_substitute(cJSON *root, const char *str)
             }
             else
             {
+                uniconf_error("WARNING: variable '%s' is undefined", varname);
                 break;
             }
+            FREE_AND_NULL(varname);
         }
         char *temp = NULL;
         asprintf(&temp, "%s%s", result ? result : "", pointer);

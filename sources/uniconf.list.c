@@ -30,7 +30,7 @@ int uniconf_list(cJSON *root, const char *filepath, const char *branch)
         {
             uniconf_FileByLine(filepath, line)
             {
-                char *value = uniconf_trim(line, "\r\n");
+                char *value = uniconf_unquote(uniconf_trim(line, "\r\n"));
                 cJSON *item = cJSON_CreateString(value);
                 if (item)
                 {
