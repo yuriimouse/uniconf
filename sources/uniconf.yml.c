@@ -18,18 +18,21 @@ static cJSON *uniconf_yml__string(char *value)
 {
     if (value && *value)
     {
+        char *sdup = strdup(value);
+        char *trimed = uniconf_trim(sdup, "\r\n");
         cJSON *item = NULL;
-        int slen = strlen(value);
-        if ((slen > 2) && ('"' == value[0]) && ('"' == value[slen - 1]))
+        int slen = strlen(trimed);
+        if ((slen > 2) && ('"' == trimed[0]) && ('"' == trimed[slen - 1]))
         {
-            char *expanded = uniconf_substitute(NULL, value);
+            char *expanded = uniconf_substitute(NULL, trimed);
             item = cJSON_CreateString(uniconf_unquote(expanded));
             FREE_AND_NULL(expanded);
         }
         else
         {
-            item = cJSON_CreateString(uniconf_unquote(value));
+            item = cJSON_CreateString(uniconf_unquote(trimed));
         }
+        FREE_AND_NULL(sdup);
         return item;
     }
     return cJSON_CreateNull();
