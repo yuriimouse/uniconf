@@ -21,7 +21,6 @@ static void uniconf_json_substitute(cJSON *json);
 int uniconf_json(cJSON *root, const char *filepath, const char *branch)
 {
     int count = 0;
-    // cJSON *node = uniconf_node(root, branch);
     FILE *file = NULL;
 
     if (root && filepath && (file = fopen(filepath, "rt")))
@@ -36,41 +35,44 @@ int uniconf_json(cJSON *root, const char *filepath, const char *branch)
         {
             uniconf_error_file(filepath, 0, "%s", cJSON_GetErrorPtr());
         }
-        else if (branch && *branch)
-        {
-            // make branch
-            cJSON_AddItemToObject(root, branch, json);
-            uniconf_json_substitute(json);
-            count++;
-        }
-        else if(cJSON_IsObject(json) || cJSON_IsArray(json))
-        {
-            // merge json to node
-            for (cJSON *element = json->child; element != NULL; element = element->next)
-            {
-                if (cJSON_IsObject(root))
-                {
-                    cJSON_AddItemToObject(root, element->string, cJSON_Duplicate(element, 1));
-                }
-                else if (cJSON_IsArray(root))
-                {
-                    cJSON_AddItemToArray(root, cJSON_Duplicate(element, 1));
-                    count++;
-                }
-            }
-            uniconf_json_substitute(root);
-            cJSON_Delete(json);
-        }
         else
         {
-            uniconf_error_file(filepath, 1, "not an object or array");
+            cJSON *node = uniconf_nodeNULL(root, branch);
+            if (cJSON_IsNull(node))
+            {
+                // replace
+                cJSON_ReplaceItemInObject(root, branch, json);
+                uniconf_json_substitute(json);
+                count++;
+            }
+            else if (node->type != json->type)
+            {
+                uniconf_error_file(filepath, 0, "ERROR: wrong join (%d-%d)", node->type, json->type);
+            }
+            else
+            {
+                // merge
+                for (cJSON *element = json->child; element != NULL; element = element->next)
+                {
+                    if (cJSON_IsObject(node))
+                    {
+                        cJSON_AddItemToObject(node, element->string, cJSON_Duplicate(element, 1));
+                    }
+                    else if (cJSON_IsArray(node))
+                    {
+                        cJSON_AddItemToArray(node, cJSON_Duplicate(element, 1));
+                    }
+                    count++;
+                }
+                uniconf_json_substitute(root);
+                cJSON_Delete(json);
+            }
         }
         if (buffer)
         {
             free(buffer);
         }
     }
-
     return count;
 }
 

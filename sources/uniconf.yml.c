@@ -70,28 +70,16 @@ static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
             // starts as array
             node->type = cJSON_Array;
         }
-        if (value && *value)
-        {
-            return cJSON_IsArray(node) ? uniconf_yml__array(node, value) : NULL;
-        }
-        return node;
+        return cJSON_IsArray(node) ? uniconf_yml__array(node, value) : NULL;
     }
-    else // named
+    // object element
+    char *pure = uniconf_trim(name, ":");
+    if (cJSON_IsNull(node))
     {
-        char *pure = uniconf_trim(name, ":");
-        // object element
-        if (cJSON_IsNull(node))
-        {
-            // starts as object
-            node->type = cJSON_Object;
-        }
-        if (value && *value)
-        {
-            return cJSON_IsObject(node) ? uniconf_yml__object(node, pure, value) : NULL;
-        }
-        return node;
+        // starts as object
+        node->type = cJSON_Object;
     }
-    return NULL;
+    return cJSON_IsObject(node) ? uniconf_yml__object(node, pure, value) : NULL;
 }
 
 static list_t *stack = NULL;
@@ -191,7 +179,7 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
                         last = uniconf_yml__add(level->node, name, value);
                         if (!last)
                         {
-                            uniconf_error_file(filepath, _lineno, "can't expand the current level");
+                            uniconf_error_file(filepath, _lineno, "can't expand the current level ('%s':'%s')", name, value);
                             break;
                         }
                     }
@@ -204,13 +192,13 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
                         }
                         if (pfxlen != level->prefix)
                         {
-                            uniconf_error_file(filepath, _lineno, "the uncorrect level");
+                            uniconf_error_file(filepath, _lineno, "the uncorrect level ('%s':'%s')", name, value);
                             break;
                         }
                         last = uniconf_yml__add(level->node, name, value);
                         if (!last)
                         {
-                            uniconf_error_file(filepath, _lineno, "can't continue expanding the current level");
+                            uniconf_error_file(filepath, _lineno, "can't continue expanding the current level ('%s':'%s')", name, value);
                             break;
                         }
                     }

@@ -18,34 +18,61 @@
 int uniconf_list(cJSON *root, const char *filepath, const char *branch)
 {
     int count = 0;
-    cJSON *node = uniconf_node(root, branch);
-    if (node)
+    cJSON *node = uniconf_nodeNULL(root, branch);
+    if (cJSON_IsNull(node))
     {
-        if (!cJSON_IsArray(node) && branch)
+        cJSON *item = cJSON_CreateArray();
+        if (cJSON_ReplaceItemInObjectCaseSensitive(node, branch, item))
         {
-            node = cJSON_CreateArray();
-            cJSON_ReplaceItemInObjectCaseSensitive(root,branch,node);
+            node = item;
         }
-        if (cJSON_IsArray(node))
+        else
         {
-            uniconf_FileByLine(filepath, line)
+            node = NULL;
+            uniconf_error("ERROR: unexpected crash on file '%s' at branch '%s'", filepath, branch);
+        }
+    }
+    if (!cJSON_IsArray(node))
+    {
+        uniconf_error("ERROR: error type for file '%s' at branch '%s'", filepath, branch);
+    }
+    else
+    {
+        uniconf_FileByLine(filepath, line)
+        {
+            char *value = uniconf_unquote(uniconf_trim(line, "\r\n"));
+            if (value)
             {
-                char *value = uniconf_unquote(uniconf_trim(line, "\r\n"));
-                cJSON *item = cJSON_CreateString(value);
-                if (item)
-                {
+                if ((1 == _lineno) && ('[' == value[0]))
+                { // nested array
+                    cJSON *item = cJSON_CreateArray();
                     if (cJSON_AddItemToArray(node, item))
                     {
-                        count++;
+                        node = item;
                     }
-                    else
+                }
+                else if (strchr("[]#", value[0]))
+                {
+                    continue;
+                }
+                else
+                {
+                    cJSON *item = cJSON_CreateString(value);
+                    if (item)
                     {
-                        cJSON_Delete(item);
+                        if (cJSON_AddItemToArray(node, item))
+                        {
+                            count++;
+                        }
+                        else
+                        {
+                            cJSON_Delete(item);
+                        }
                     }
                 }
             }
-            uniconf_EndByLine(line);
         }
+        uniconf_EndByLine(line);
     }
 
     return count;
