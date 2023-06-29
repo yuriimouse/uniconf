@@ -18,19 +18,10 @@
 int uniconf_list(cJSON *root, const char *filepath, const char *branch)
 {
     int count = 0;
-    cJSON *node = uniconf_nodeNULL(root, branch);
-    if (cJSON_IsNull(node))
+    cJSON *node = cJSON_GetObjectItemCaseSensitive(root, branch);
+    if (!node)
     {
-        cJSON *item = cJSON_CreateArray();
-        if (cJSON_ReplaceItemInObjectCaseSensitive(node, branch, item))
-        {
-            node = item;
-        }
-        else
-        {
-            node = NULL;
-            uniconf_error("ERROR: unexpected crash on file '%s' at branch '%s'", filepath, branch);
-        }
+        node = cJSON_AddArrayToObject(root, branch);
     }
     if (!cJSON_IsArray(node))
     {
