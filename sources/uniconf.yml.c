@@ -142,7 +142,7 @@ static struct yaml_level *stack_pop_get()
 int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
 {
     int count = 0;
-    cJSON *node = uniconf_node(root, branch);
+    cJSON *node = uniconf_nodeNULL(root, branch);
     if (node)
     {
         int pfxlen = 0;

@@ -27,6 +27,7 @@ int uniconf_is_commented(char *line, const char *prefix);
 char *uniconf_trim(char *str, char *trail);
 char *uniconf_unquote(char *str);
 cJSON *uniconf_node(cJSON *root, const char *name);
+cJSON *uniconf_nodeNULL(cJSON *root, const char *name);
 char *uniconf_substitute(cJSON *root, const char *str);
 cJSON *uniconf_vardata(cJSON *root, char *varname);
 int uniconf_set(cJSON *node, char *name, char *value);

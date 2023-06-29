@@ -80,6 +80,30 @@ cJSON *uniconf_node(cJSON *root, const char *name)
         if (!node)
         {
             node = cJSON_AddObjectToObject(root, name);
+            // node = cJSON_AddNullToObject(root, name);
+        }
+    }
+
+    return node;
+}
+
+/**
+ * Create|get the NULL named node
+ *
+ * @param root
+ * @param name
+ * @return cJSON*
+ */
+cJSON *uniconf_nodeNULL(cJSON *root, const char *name)
+{
+    cJSON *node = root;
+
+    if (name && *name)
+    {
+        node = cJSON_GetObjectItemCaseSensitive(root, name);
+        if (!node)
+        {
+            node = cJSON_AddNullToObject(root, name);
         }
     }
 
