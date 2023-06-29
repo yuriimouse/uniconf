@@ -70,7 +70,11 @@ static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
             // starts as array
             node->type = cJSON_Array;
         }
-        return cJSON_IsArray(node) ? uniconf_yml__array(node, value) : NULL;
+        if (value && *value)
+        {
+            return cJSON_IsArray(node) ? uniconf_yml__array(node, value) : NULL;
+        }
+        return node;
     }
     else // named
     {
@@ -81,7 +85,11 @@ static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
             // starts as object
             node->type = cJSON_Object;
         }
-        return cJSON_IsObject(node) ? uniconf_yml__object(node, pure, value) : NULL;
+        if (value && *value)
+        {
+            return cJSON_IsObject(node) ? uniconf_yml__object(node, pure, value) : NULL;
+        }
+        return node;
     }
     return NULL;
 }
