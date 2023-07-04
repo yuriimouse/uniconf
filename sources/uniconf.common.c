@@ -293,6 +293,7 @@ char *uniconf_substitute(cJSON *root, const char *str)
             else
             {
                 uniconf_error("WARNING: variable '%s' is undefined", varname);
+                FREE_AND_NULL(varname);
                 break;
             }
             FREE_AND_NULL(varname);
