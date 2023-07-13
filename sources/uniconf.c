@@ -135,15 +135,27 @@ static int uniconf_file(uniconf_t root, const char *path, const char *filename)
 {
     int ret = 0;
 
-    char *name = strdup(filename);
-    char *ext = strrchr(name, '.');
+    char *filepath = uniconf_makepath(path, filename);
+    char *name = NULL;
+
+    char *ext = NULL;
+    if (filename && *filename)
+    {
+        name = strdup(filename);
+        ext = strrchr(name, '.');
+        if (ext)
+        {
+            ext[0] = '\0';
+        }
+    }
+    else
+    {
+        ext = strrchr(filepath, '.');
+    }
+
     if (ext)
     {
-        ext[0] = '\0';
         ext++;
-
-        char *filepath = uniconf_makepath(path, filename);
-
         if (!strcmp("env", ext))
         {
             ret = uniconf_env(root, filepath, name);
@@ -168,11 +180,10 @@ static int uniconf_file(uniconf_t root, const char *path, const char *filename)
         {
             ret = uniconf_yml(root, filepath, name);
         }
-
-        free(filepath);
     }
 
     free(name);
+    free(filepath);
     return ret;
 }
 
