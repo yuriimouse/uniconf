@@ -144,6 +144,8 @@ char *uniconf_trim(char *str, char *trail)
 {
     if (str)
     {
+        str = strtok(str, "\r\n");
+
         while (isspace(*str))
         {
             str++;

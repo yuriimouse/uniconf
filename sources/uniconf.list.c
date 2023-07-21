@@ -31,7 +31,7 @@ int uniconf_list(cJSON *root, const char *filepath, const char *branch)
     {
         uniconf_FileByLine(filepath, line)
         {
-            char *value = uniconf_unquote(uniconf_trim(line, "\r\n"));
+            char *value = uniconf_unquote(strtok(line, "\r\n"));
             if (value)
             {
                 if ((1 == _lineno) && ('[' == value[0]))

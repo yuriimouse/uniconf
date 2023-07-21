@@ -19,7 +19,7 @@ static cJSON *uniconf_yml__string(char *value)
     if (value && *value)
     {
         char *sdup = strdup(value);
-        char *trimed = uniconf_trim(sdup, "\r\n");
+        char *trimed = strtok(sdup, "\r\n");
         cJSON *item = NULL;
         int slen = strlen(trimed);
         if ((slen > 2) && ('"' == trimed[0]) && ('"' == trimed[slen - 1]))
