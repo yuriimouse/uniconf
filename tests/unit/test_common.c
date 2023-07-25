@@ -99,6 +99,8 @@ static void test_is_commented(void)
     FREE_TEST_DATA(prefix);
 }
 
+// char *uniconf_string(char *str, char *trail)
+static void test_trim(void)
 {
     char *trail = NULL;
     char *str = NULL;

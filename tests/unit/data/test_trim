@@ -1,3 +1,4 @@
 '#' '   text   #with #comment' 'text'
 '//' ' text   #with    // comment' 'text   #with'
 '//' '      text   #without    comment      ' 'text   #without    comment'
+'#' '  "something with \" # here"  #fghj' '"something with \" # here"'
