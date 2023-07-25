@@ -165,6 +165,11 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
                     else if (pfxlen == level->prefix)
                     {
                         // same level
+                        if(last && cJSON_IsNull(last))
+                        {
+                            // continue the undefined node
+                            level = stack_push(pfxlen, last);
+                        }
                         last = uniconf_yml__add(level->node, name, value);
                         if (!last)
                         {
