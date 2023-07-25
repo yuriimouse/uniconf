@@ -139,16 +139,15 @@ int uniconf_is_commented(char *line, const char *prefix)
  */
 static char *uniconf__backSpaces(char *str)
 {
-    if (str && *str)
+    if (str)
     {
-        char *ptr;
-        for (ptr = str; ('\0' == *ptr) || isspace(*ptr); ptr--)
+        while (('\0' == *str) || isspace(*str))
         {
-            *ptr = '\0';
+            *str = '\0';
+            str--;
         }
-        return ptr;
     }
-    return NULL;
+    return str;
 }
 
 /**
@@ -205,7 +204,7 @@ char *uniconf_string(char *str, char *trail)
         {
             // find the closing quote
             char *ptr = NULL;
-            for (ptr = ret + 1; *ptr && *ptr != quoted; ptr++)
+            for (ptr = ret + 1; *ptr && (*ptr != quoted); ptr++)
             {
                 if ('\\' == *ptr)
                 {

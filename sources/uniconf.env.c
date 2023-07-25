@@ -35,8 +35,8 @@ int uniconf_env(cJSON *root, const char *filepath, const char *branch)
                 sscanf(line, "%m[^ =] = %m[^\r\n]", &name, &value);
                 if (name && value)
                 {
-                    value = uniconf_string(value, "#");
-                    char *expanded = uniconf_substitute(NULL, value);
+                    char *avalue = uniconf_string(value, "###");
+                    char *expanded = uniconf_substitute(NULL, avalue);
                     if (expanded)
                     {
                         count += uniconf_set(node, name, uniconf_unquote(expanded));
