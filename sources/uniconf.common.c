@@ -132,42 +132,104 @@ int uniconf_is_commented(char *line, const char *prefix)
 }
 
 /**
- * Makes the trimmed string without trailing comments.
+ * Cut trailing spaces
+ *
+ * @param str
+ * @return char* last nonspaced char
+ */
+static char *uniconf__backSpaces(char *str)
+{
+    if (str && *str)
+    {
+        char *ptr;
+        for (ptr = str; ('\0' == *ptr) || isspace(*ptr); ptr--)
+        {
+            *ptr = '\0';
+        }
+        return ptr;
+    }
+    return NULL;
+}
+
+/**
+ * Trims trailing comments and spaces
+ *
+ * @param tail
+ * @param trailer
+ * @return char* last significant char
+ */
+static char *uniconf__cutOff(char *tail, char *trailer)
+{
+    if (trailer && *trailer)
+    {
+        char *ptr = strstr(tail, trailer);
+        printf("\nptr=%s\n", ptr);
+        if (ptr)
+        {
+            *ptr = 0;
+            return uniconf__backSpaces(ptr);
+        }
+    }
+    return uniconf__backSpaces(strchr(tail, '\0'));
+}
+
+/**
+ * Extracts a string with/without quotes and trims trailing spaces and comments
  * Modifies the string!
  *
  * @param str
  * @param trail
- *
  * @return char*
  */
-char *uniconf_trim(char *str, char *trail)
+char *uniconf_string(char *str, char *trail)
 {
-    if (str)
+    if (str && *str)
     {
-        str = strtok(str, "\r\n");
 
-        while (isspace(*str))
+        // trim EOL
+        char *ret = strtok(str, "\r\n");
+
+        // trim leading spaces
+        while (isspace(*ret))
         {
-            str++;
+            ret++;
         }
 
-        char *ptr = strstr(str, trail);
-        if (ptr)
+        // check if quoted
+        char quoted = '\0';
+        if (strchr("'\"`", ret[0]))
         {
-            *ptr = '\0';
+            quoted = ret[0];
+        }
+
+        if (quoted)
+        {
+            // find the closing quote
+            char *ptr = NULL;
+            for (ptr = ret + 1; *ptr && *ptr != quoted; ptr++)
+            {
+                if ('\\' == *ptr)
+                {
+                    ptr++;
+                }
+            }
+            // cut the correct trailer after closed
+            if (*ptr == quoted)
+            {
+                if (uniconf__cutOff(ptr + 1, trail) == ptr)
+                {
+                    return ret;
+                }
+            }
+            return NULL;
         }
         else
         {
-            ptr = str + strlen(str);
+            uniconf__cutOff(ret, trail);
         }
-        --ptr;
-        while ((ptr > str) && isspace(*ptr)) //
-        {
-            *ptr = '\0';
-            ptr--;
-        }
+        return ret;
     }
-    return str;
+    return NULL;
 }
 
 /**
@@ -181,7 +243,7 @@ char *uniconf_trim(char *str, char *trail)
 char *uniconf_unquote(char *str)
 {
     char *ptr = str;
-    if (strchr("'\"", *ptr))
+    if (strchr("'\"`", *ptr))
     {
         char quote = *ptr;
         int len = strlen(str);

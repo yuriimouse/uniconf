@@ -24,7 +24,7 @@
 char *uniconf_makepath(const char *path, const char *name);
 int uniconf_check(const char *path, const char *name);
 int uniconf_is_commented(char *line, const char *prefix);
-char *uniconf_trim(char *str, char *trail);
+char *uniconf_string(char *str, char *trail);
 char *uniconf_unquote(char *str);
 cJSON *uniconf_node(cJSON *root, const char *name);
 cJSON *uniconf_nodeNULL(cJSON *root, const char *name);

@@ -32,7 +32,7 @@ int uniconf_ini(cJSON *root, const char *filepath, const char *branch)
                 {
                     if (strchr(line, ']'))
                     {
-                        node = uniconf_node(node, uniconf_trim(line, "]") + 1);
+                        node = uniconf_node(node, uniconf_string(line, "]") + 1);
                     }
                     else
                     {
@@ -47,7 +47,7 @@ int uniconf_ini(cJSON *root, const char *filepath, const char *branch)
                     sscanf(line, "%m[^ =] = %m[^\r\n]", &name, &value);
                     if (name && value)
                     {
-                        char *expanded = uniconf_substitute(NULL, uniconf_trim(uniconf_trim(value, "//"), "##"));
+                        char *expanded = uniconf_substitute(NULL, uniconf_string(uniconf_string(value, "//"), "#"));
                         if (expanded)
                         {
                             count += uniconf_set(node, name, uniconf_unquote(expanded));

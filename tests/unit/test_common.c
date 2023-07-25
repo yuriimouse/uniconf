@@ -99,8 +99,6 @@ static void test_is_commented(void)
     FREE_TEST_DATA(prefix);
 }
 
-// char *uniconf_trim(char *str, char *trail)
-static void test_trim(void)
 {
     char *trail = NULL;
     char *str = NULL;
@@ -109,7 +107,7 @@ static void test_trim(void)
     {
         USE_OF_THE_TEST_DATA("'%m[^']' '%m[^']' '%m[^']'", &trail, &str, &expect);
         printf("'%s'->'%s' = '%s'", trail, str, expect);
-        char *actual = uniconf_trim(str, trail);
+        char *actual = uniconf_string(str, trail);
         printf("<-'%s'\n", actual);
         CU_ASSERT_STRING_EQUAL(expect, actual);
     }

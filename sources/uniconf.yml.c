@@ -73,7 +73,7 @@ static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
         return cJSON_IsArray(node) ? uniconf_yml__array(node, value) : NULL;
     }
     // object element
-    char *pure = uniconf_trim(name, ":");
+    char *pure = uniconf_string(name, ":");
     if (cJSON_IsNull(node))
     {
         // starts as object
