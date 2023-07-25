@@ -146,7 +146,7 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
                 FREE_AND_NULL(name);
                 FREE_AND_NULL(value);
                 sscanf(line, "%*[ ]%n", &pfxlen);
-                sscanf(line + pfxlen, "%ms %m[^#\r\n]", &name, &value);
+                sscanf(line + pfxlen, "%ms %m[^\r\n]", &name, &value);
 
                 if (name)
                 {
