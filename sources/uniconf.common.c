@@ -163,7 +163,6 @@ static char *uniconf__cutOff(char *tail, char *trailer)
     if (trailer && *trailer)
     {
         char *ptr = strstr(tail, trailer);
-        printf("\nptr=%s\n", ptr);
         if (ptr)
         {
             *ptr = 0;
