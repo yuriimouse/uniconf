@@ -14,74 +14,6 @@ struct yaml_level
     cJSON *node;
 };
 
-static cJSON *uniconf_yml__string(char *value)
-{
-    if (value && *value)
-    {
-        char *sdup = strdup(value);
-        char *trimed = strtok(sdup, "\r\n");
-        cJSON *item = NULL;
-        int slen = strlen(trimed);
-        if ((slen > 2) && ('"' == trimed[0]) && ('"' == trimed[slen - 1]))
-        {
-            char *expanded = uniconf_substitute(NULL, trimed);
-            item = cJSON_CreateString(uniconf_unquote(expanded));
-            FREE_AND_NULL(expanded);
-        }
-        else
-        {
-            item = cJSON_CreateString(uniconf_unquote(trimed));
-        }
-        FREE_AND_NULL(sdup);
-        return item;
-    }
-    return cJSON_CreateNull();
-}
-
-static cJSON *uniconf_yml__object(cJSON *node, char *name, char *value)
-{
-    cJSON *item = uniconf_yml__string(value);
-    if (cJSON_AddItemToObject(node, name, item))
-    {
-        return item;
-    }
-    cJSON_Delete(item);
-    return NULL;
-}
-
-static cJSON *uniconf_yml__array(cJSON *node, char *value)
-{
-    cJSON *item = uniconf_yml__string(value);
-    if (cJSON_AddItemToArray(node, item))
-    {
-        return item;
-    }
-    cJSON_Delete(item);
-    return NULL;
-}
-
-static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
-{
-    if (STR_EQUAL(name, "-"))
-    {
-        // array element
-        if (cJSON_IsNull(node))
-        {
-            // starts as array
-            node->type = cJSON_Array;
-        }
-        return cJSON_IsArray(node) ? uniconf_yml__array(node, value) : NULL;
-    }
-    // object element
-    char *pure = uniconf_string(name, ":");
-    if (cJSON_IsNull(node))
-    {
-        // starts as object
-        node->type = cJSON_Object;
-    }
-    return cJSON_IsObject(node) ? uniconf_yml__object(node, pure, value) : NULL;
-}
-
 static list_t *stack = NULL;
 static struct yaml_level *stack_push(int pfx, cJSON *node)
 {
@@ -117,6 +49,95 @@ static struct yaml_level *stack_pop_get()
     void *lvl = list_pop(stack);
     FREE_AND_NULL(lvl);
     return (struct yaml_level *)list_get(stack);
+}
+
+static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value);
+
+static cJSON *uniconf_yml__string(char *value)
+{
+    if (value && *value)
+    {
+        char *sdup = strdup(value);
+        char *trimed = uniconf_string(sdup, "#");
+        cJSON *item = NULL;
+        int slen = strlen(trimed);
+        if ((slen > 2) && ('"' == trimed[0]) && ('"' == trimed[slen - 1]))
+        {
+            char *expanded = uniconf_substitute(NULL, trimed);
+            item = cJSON_CreateString(uniconf_unquote(expanded));
+            FREE_AND_NULL(expanded);
+        }
+        else
+        {
+            item = cJSON_CreateString(uniconf_unquote(trimed));
+        }
+        FREE_AND_NULL(sdup);
+        return item;
+    }
+    return cJSON_CreateNull();
+}
+
+static cJSON *uniconf_yml__object(cJSON *node, char *name, char *value)
+{
+    cJSON *item = uniconf_yml__string(value);
+    if (cJSON_AddItemToObject(node, name, item))
+    {
+        return item;
+    }
+    cJSON_Delete(item);
+    return NULL;
+}
+
+static cJSON *uniconf_yml__array(cJSON *node, char *value)
+{
+    // check for included
+    if (value && *value)
+    {
+        char *inc_name = NULL;
+        char *inc_val = NULL;
+        sscanf(value, "%m[^:]: %m[^\n]", &inc_name, &inc_val);
+        if (inc_name && *inc_name)
+        {
+            // make included level
+            struct yaml_level *level = stack_get();
+            cJSON *last = uniconf_yml__add(level->node, inc_name, inc_val);
+            if (last)
+            {
+                stack_push(level->prefix + 2, last);
+            }
+            return last;
+        }
+        cJSON *item = uniconf_yml__string(value);
+        if (cJSON_AddItemToArray(node, item))
+        {
+            return item;
+        }
+        cJSON_Delete(item);
+    }
+
+    return NULL;
+}
+
+static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
+{
+    if (STR_EQUAL(name, "-"))
+    {
+        // array element
+        if (cJSON_IsNull(node))
+        {
+            // starts as array
+            node->type = cJSON_Array;
+        }
+        return cJSON_IsArray(node) ? uniconf_yml__array(node, value) : NULL;
+    }
+    // object element
+    char *pure = uniconf_string(name, ":");
+    if (cJSON_IsNull(node))
+    {
+        // starts as object
+        node->type = cJSON_Object;
+    }
+    return cJSON_IsObject(node) ? uniconf_yml__object(node, pure, value) : NULL;
 }
 
 /**
@@ -165,7 +186,7 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
                     else if (pfxlen == level->prefix)
                     {
                         // same level
-                        if(last && cJSON_IsNull(last))
+                        if (last && cJSON_IsNull(last))
                         {
                             // continue the undefined node
                             level = stack_push(pfxlen, last);
