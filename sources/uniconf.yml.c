@@ -145,6 +145,11 @@ static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
         // starts as object
         node->type = cJSON_Object;
     }
+    else if (cJSON_IsArray(node))
+    {
+        struct yaml_level *level = stack_pop_get();
+        node = (level && level->node) ? level->node : node;
+    }
     return cJSON_IsObject(node) ? uniconf_yml__object(node, pure, value) : NULL;
 }
 
