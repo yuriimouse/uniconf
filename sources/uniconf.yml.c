@@ -91,7 +91,7 @@ static cJSON *uniconf_yml__object(cJSON *node, char *name, char *value)
 static cJSON *uniconf_yml__array(cJSON *node, char *value)
 {
     cJSON *item = NULL;
-    if (value && *value && isalpha(value))
+    if (value && *value && isalpha(*value))
     {
         // check for included named
         char *inc_name = NULL;
