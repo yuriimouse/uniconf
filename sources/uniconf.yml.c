@@ -80,7 +80,7 @@ static cJSON *uniconf_yml__string(char *value)
 static cJSON *uniconf_yml__object(cJSON *node, char *name, char *value)
 {
     cJSON *item = uniconf_yml__string(value);
-    if (cJSON_ReplaceItemInObjectCaseSensitive(node, name, item))
+    if (cJSON_AddItemToObject(node, name, item))
     {
         return item;
     }
@@ -103,7 +103,7 @@ static cJSON *uniconf_yml__array(cJSON *node, char *value)
             item = cJSON_CreateObject();
             if (item)
             {
-                if (!cJSON_ReplaceItemInObjectCaseSensitive(item, inc_name, uniconf_yml__string(inc_val)))
+                if (!cJSON_AddItemToObject(item, inc_name, uniconf_yml__string(inc_val)))
                 {
                     cJSON_Delete(item);
                     item = NULL;
