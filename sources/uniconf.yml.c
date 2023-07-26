@@ -90,31 +90,39 @@ static cJSON *uniconf_yml__object(cJSON *node, char *name, char *value)
 
 static cJSON *uniconf_yml__array(cJSON *node, char *value)
 {
-    // // check for included
-    // if (value && *value)
-    // {
-    //     char *inc_name = NULL;
-    //     char *inc_val = NULL;
-    //     sscanf(value, "%m[^:]: %m[^\n]", &inc_name, &inc_val);
-    //     if (inc_name && *inc_name)
-    //     {
-    //         // make included level
-    //         struct yaml_level *level = stack_get();
-    //         cJSON *last = uniconf_yml__add(level->node, inc_name, inc_val);
-    //         if (last)
-    //         {
-    //             stack_push(level->prefix + 2, last);
-    //         }
-    //         return last;
-    //     }
-    cJSON *item = uniconf_yml__string(value);
+    cJSON *item = NULL;
+    if (value && *value && isalpha(value))
+    {
+        // check for included named
+        char *inc_name = NULL;
+        char inc_sep = 0;
+        char *inc_val = NULL;
+        sscanf(value, "%m[^: ]%c %m[^\n]", &inc_name, &inc_sep, &inc_val);
+        if (inc_name && *inc_name && (':' == inc_sep))
+        {
+            item = cJSON_CreateObject();
+            if (item)
+            {
+                if (!cJSON_AddItemToObject(item, inc_name, uniconf_yml__string(inc_val)))
+                {
+                    cJSON_Delete(item);
+                    item = NULL;
+                }
+            }
+        }
+        FREE_AND_NULL(inc_val);
+        FREE_AND_NULL(inc_name);
+    }
+
+    if (!item)
+    {
+        item = uniconf_yml__string(value);
+    }
     if (cJSON_AddItemToArray(node, item))
     {
         return item;
     }
     cJSON_Delete(item);
-    // }
-
     return NULL;
 }
 
