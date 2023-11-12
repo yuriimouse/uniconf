@@ -10,7 +10,7 @@ TEST_PATH = tests/
 VERSION := $(shell ./version.sh)
 
 CC = gcc # compiler
-CFLAGS = -fPIC -Wall -Wextra -O2 -g -std=gnu99 -DVERSION=$(VERSION) -I/usr/include -I/usr/local/custom/include # compiling flags
+CFLAGS = -fPIC -Wall -Wextra -O2 -g -std=gnu99 -DVERSION=$(VERSION) -I/usr/include -I/usr/local/include -I/usr/local/custom/include # compiling flags
 LDFLAGS = -shared # linking flags
 
 STATIC_LIB = lib$(LIB_NAME).a
@@ -54,7 +54,7 @@ TEST_OBJECT_LINKS = $(addprefix $(TEST_OBJ_DIR), $(TEST_SRC_FILES:.c=.o))
 test: $(TEST_BIN)
 
 $(TEST_BIN): $(TEST_OBJECT_LINKS)
-	@$(CC) -L/usr/lib64  -lcunit -L/usr/local/lib -L$(INSTALL_PATH)lib -lconfig -lcjson -llists -l$(LIB_NAME) -o $@ $^
+	@$(CC) -L/usr/lib64  -lcunit -L/usr/local/lib -L$(INSTALL_PATH)lib -lconfig -lyaml -lcjson -llists -l$(LIB_NAME) -o $@ $^
 	@$(PRINTF)	"$(WARN_COLOR)\n  Linking...  $(TEST_BIN) $(OK_COLOR)         [✓]\n  tests created$(NO_COLOR)\n"
 	@rm -rf $(TEST_OBJ_DIR)
 
