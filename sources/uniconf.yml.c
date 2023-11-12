@@ -7,151 +7,10 @@
 #include <string.h>
 
 #include <lists.h>
+#include <yaml.h>
 
-struct yaml_level
-{
-    int prefix;
-    cJSON *node;
-};
-
-static list_t *stack = NULL;
-static struct yaml_level *stack_push(int pfx, cJSON *node)
-{
-    if (!stack)
-    {
-        stack = list_construct();
-    }
-    struct yaml_level *level = malloc(sizeof(struct yaml_level));
-    level->prefix = pfx;
-    level->node = node;
-    list_push(stack, (void *)level);
-
-    return level;
-}
-static struct yaml_level *stack_get()
-{
-    if (!stack)
-    {
-        stack = list_construct();
-    }
-    return (struct yaml_level *)list_get(stack);
-}
-// static struct yaml_level *stack_pop()
-// {
-//     if (!stack)
-//     {
-//         stack = list_construct();
-//     }
-//     return (struct yaml_level *)list_pop(stack);
-// }
-static struct yaml_level *stack_pop_get()
-{
-    void *lvl = list_pop(stack);
-    FREE_AND_NULL(lvl);
-    return (struct yaml_level *)list_get(stack);
-}
-
-static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value);
-
-static cJSON *uniconf_yml__string(char *value)
-{
-    if (value && *value)
-    {
-        char *sdup = strdup(value);
-        char *trimed = uniconf_string(sdup, "#");
-        cJSON *item = NULL;
-        int slen = strlen(trimed);
-        if ((slen > 2) && ('"' == trimed[0]) && ('"' == trimed[slen - 1]))
-        {
-            char *expanded = uniconf_substitute(NULL, trimed);
-            item = cJSON_CreateString(uniconf_unquote(expanded));
-            FREE_AND_NULL(expanded);
-        }
-        else
-        {
-            item = cJSON_CreateString(uniconf_unquote(trimed));
-        }
-        FREE_AND_NULL(sdup);
-        return item;
-    }
-    return cJSON_CreateNull();
-}
-
-static cJSON *uniconf_yml__object(cJSON *node, char *name, char *value)
-{
-    cJSON *item = uniconf_yml__string(value);
-    if (cJSON_AddItemToObject(node, name, item))
-    {
-        return item;
-    }
-    cJSON_Delete(item);
-    return NULL;
-}
-
-static cJSON *uniconf_yml__array(cJSON *node, char *value)
-{
-    cJSON *item = NULL;
-    if (value && *value && isalpha(*value))
-    {
-        // check for included named
-        char *inc_name = NULL;
-        char inc_sep = 0;
-        char *inc_val = NULL;
-        sscanf(value, "%m[^: ]%c %m[^\n]", &inc_name, &inc_sep, &inc_val);
-        if (inc_name && *inc_name && (':' == inc_sep))
-        {
-            item = cJSON_CreateObject();
-            if (item)
-            {
-                if (!cJSON_AddItemToObject(item, inc_name, uniconf_yml__string(inc_val)))
-                {
-                    cJSON_Delete(item);
-                    item = NULL;
-                }
-            }
-        }
-        FREE_AND_NULL(inc_val);
-        FREE_AND_NULL(inc_name);
-    }
-
-    if (!item)
-    {
-        item = uniconf_yml__string(value);
-    }
-    if (cJSON_AddItemToArray(node, item))
-    {
-        return item;
-    }
-    cJSON_Delete(item);
-    return NULL;
-}
-
-static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
-{
-    if (STR_EQUAL(name, "-"))
-    {
-        // array element
-        if (cJSON_IsNull(node))
-        {
-            // starts as array
-            node->type = cJSON_Array;
-        }
-        return cJSON_IsArray(node) ? uniconf_yml__array(node, value) : NULL;
-    }
-    // object element
-    char *pure = uniconf_string(name, ":");
-    if (cJSON_IsNull(node))
-    {
-        // starts as object
-        node->type = cJSON_Object;
-    }
-    else if (cJSON_IsArray(node))
-    {
-        struct yaml_level *level = stack_pop_get();
-        node = (level && level->node) ? level->node : node;
-    }
-    return cJSON_IsObject(node) ? uniconf_yml__object(node, pure, value) : NULL;
-}
+static void process_event(cJSON *json, yaml_event_t *event);
+static cJSON *node = NULL;
 
 /**
  * Parse the .yml file
@@ -164,91 +23,217 @@ static cJSON *uniconf_yml__add(cJSON *node, char *name, char *value)
 int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
 {
     int count = 0;
-    cJSON *node = uniconf_nodeNULL(root, branch);
+    node = uniconf_nodeNULL(root, branch);
+
     if (node)
     {
-        int pfxlen = 0;
-        char *name = NULL;
-        char *value = NULL;
-        cJSON *last = NULL;
-        struct yaml_level *level = NULL;
-        uniconf_FileByLine(filepath, line)
+        FILE *_file = NULL;
+        if (filepath && (_file = fopen(filepath, "rt")))
         {
-            if (!(uniconf_is_commented(line, "#") || uniconf_is_commented(line, "---")))
-            {
-                pfxlen = 0;
-                FREE_AND_NULL(name);
-                FREE_AND_NULL(value);
-                sscanf(line, "%*[ ]%n", &pfxlen);
-                sscanf(line + pfxlen, "%ms %m[^\r\n]", &name, &value);
+            yaml_parser_t parser;
+            yaml_event_t event;
+            yaml_event_type_t event_type;
 
-                if (name)
+            yaml_parser_initialize(&parser);
+            yaml_parser_set_input_file(&parser, _file);
+
+            do
+            {
+                if (!yaml_parser_parse(&parser, &event))
                 {
-                    level = stack_get(); // current level
-                    if (!level)
-                    {
-                        // first line
-                        if (pfxlen > 0)
-                        {
-                            uniconf_error_file(filepath, _lineno, "leading spaces are not allowed in the first line");
-                            break;
-                        }
-                        level = stack_push(0, node);
-                        last = uniconf_yml__add(node, name, value);
-                    }
-                    else if (pfxlen == level->prefix)
-                    {
-                        // same level
-                        if (last && cJSON_IsNull(last))
-                        {
-                            // continue the undefined node
-                            level = stack_push(pfxlen, last);
-                        }
-                        last = uniconf_yml__add(level->node, name, value);
-                        if (!last)
-                        {
-                            uniconf_error_file(filepath, _lineno, "can't add it to the current level ('%s':'%s')", name, value);
-                            break;
-                        }
-                    }
-                    else if (pfxlen > level->prefix)
-                    {
-                        // next level
-                        level = stack_push(pfxlen, last);
-                        last = uniconf_yml__add(level->node, name, value);
-                        if (!last)
-                        {
-                            uniconf_error_file(filepath, _lineno, "can't expand the current level ('%s':'%s')", name, value);
-                            break;
-                        }
-                    }
-                    else // if(pfxlen < level->prefix)
-                    {
-                        // previous level
-                        while ((pfxlen < level->prefix))
-                        {
-                            level = stack_pop_get();
-                        }
-                        if (pfxlen != level->prefix)
-                        {
-                            uniconf_error_file(filepath, _lineno, "the uncorrect level ('%s':'%s')", name, value);
-                            break;
-                        }
-                        last = uniconf_yml__add(level->node, name, value);
-                        if (!last)
-                        {
-                            uniconf_error_file(filepath, _lineno, "can't continue expanding the current level ('%s':'%s')", name, value);
-                            break;
-                        }
-                    }
+                    uniconf_error("Failed to parse file '%s': '%s'", filepath, parser.problem);
+                    break;
                 }
+                process_event(node, &event);
+                event_type = event.type;
+                yaml_event_delete(&event);
+            } while (event_type != YAML_STREAM_END_EVENT);
+
+            yaml_parser_delete(&parser);
+            fclose(_file);
+        }
+        else
+        {
+            uniconf_error("Failed to open file '%s'", filepath);
+        }
+    }
+    return count;
+}
+
+#define STRVAL(x) ((x) ? (char *)(x) : "")
+static list_t *stack = NULL;
+
+static char *astrncpy(char *src, int len)
+{
+    char *str = malloc(len + 1);
+    if (str)
+    {
+        strncpy(str, src, len);
+        str[len] = '\0';
+    }
+    return str;
+}
+
+static cJSON *add_NullToArray(cJSON *json)
+{
+    cJSON *item = cJSON_CreateNull();
+    if (!cJSON_AddItemToArray(json, item))
+    {
+        cJSON_Delete(item);
+        item = NULL;
+    }
+    return item;
+}
+
+static cJSON *add_ObjectToArray(cJSON *json)
+{
+    cJSON *item = cJSON_CreateObject();
+    if (!cJSON_AddItemToArray(json, item))
+    {
+        cJSON_Delete(item);
+        item = NULL;
+    }
+    return item;
+}
+
+static cJSON *add_StringToArray(cJSON *json, char *name, int namelen)
+{
+    cJSON *item = NULL;
+    char *buff = astrncpy(name, namelen);
+    if (buff)
+    {
+        char *expanded = uniconf_substitute(NULL, buff);
+        if (expanded)
+        {
+            item = cJSON_CreateString(expanded);
+            if (item && !cJSON_AddItemToArray(json, item))
+            {
+                cJSON_Delete(item);
+                item = NULL;
+            }
+            free(expanded);
+        }
+        free(buff);
+    }
+    return item;
+}
+
+static cJSON *add_NullToObject(cJSON *json, char *name, int namelen)
+{
+    cJSON *item = NULL;
+    char *buff = astrncpy(name, namelen);
+    if (buff)
+    {
+        item = cJSON_CreateNull();
+        if (item && !cJSON_AddItemToObject(json, buff, item))
+        {
+            cJSON_Delete(item);
+            item = NULL;
+        }
+        free(buff);
+    }
+    return item;
+}
+
+static void set_AsString(cJSON *json, char *value, int valuelen)
+{
+    if (cJSON_IsNull(json))
+    {
+        char *buff = astrncpy(value, valuelen);
+        if (buff)
+        {
+            char *expanded = uniconf_substitute(NULL, buff);
+            if (expanded)
+            {
+                json->type = cJSON_String;
+                json->valuestring = expanded;
+            }
+            free(buff);
+        }
+    }
+}
+
+static void set_AsArray(cJSON *json)
+{
+    if (cJSON_IsNull(json))
+    {
+        json->type = cJSON_Array;
+    }
+}
+
+static void set_AsObject(cJSON *json)
+{
+    if (cJSON_IsNull(json))
+    {
+        json->type = cJSON_Object;
+    }
+}
+
+static void process_event(cJSON *json, yaml_event_t *event)
+{
+    switch (event->type)
+    {
+    case YAML_DOCUMENT_START_EVENT:
+        stack = list_construct();
+        list_push(stack, json);
+        break;
+    case YAML_DOCUMENT_END_EVENT:
+        stack = list_destruct(stack, NULL);
+        break;
+    case YAML_SCALAR_EVENT:
+        // JSONise
+        {
+            cJSON *item = (cJSON *)list_get(stack);
+            if (cJSON_IsNull(item))
+            {
+                set_AsString(item, STRVAL(event->data.scalar.value), (int)event->data.scalar.length);
+                list_pop(stack);
+            }
+            else if (cJSON_IsObject(item))
+            {
+                list_push(stack, add_NullToObject(item, STRVAL(event->data.scalar.value), (int)event->data.scalar.length));
+            }
+            else if (cJSON_IsArray(item))
+            {
+                add_StringToArray(item, STRVAL(event->data.scalar.value), (int)event->data.scalar.length);
             }
         }
-        uniconf_EndByLine(line);
-        FREE_AND_NULL(name);
-        FREE_AND_NULL(value);
-        stack = list_destruct(stack, free);
+        break;
+    case YAML_SEQUENCE_START_EVENT:
+        // JSONise
+        {
+            cJSON *item = (cJSON *)list_get(stack);
+            if (cJSON_IsNull(item))
+            {
+                set_AsArray(item);
+            }
+            else if (cJSON_IsArray(item))
+            {
+                list_push(stack, add_NullToArray(item));
+            }
+        }
+        break;
+    case YAML_SEQUENCE_END_EVENT:
+        list_pop(stack);
+        break;
+    case YAML_MAPPING_START_EVENT:
+        // JSONise
+        {
+            cJSON *item = (cJSON *)list_get(stack);
+            if (cJSON_IsNull(item))
+            {
+                set_AsObject(item);
+            }
+            else if (cJSON_IsArray(item))
+            {
+                list_push(stack, add_ObjectToArray(item));
+            }
+        }
+        break;
+    case YAML_MAPPING_END_EVENT:
+        list_pop(stack);
+        break;
+    default:
+        break;
     }
-
-    return count;
 }
