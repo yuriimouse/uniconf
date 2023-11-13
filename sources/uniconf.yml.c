@@ -42,11 +42,13 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
                 if (!yaml_parser_parse(&parser, &event))
                 {
                     uniconf_error("Failed to parse file '%s': '%s'", filepath, parser.problem);
+                    count = 0;
                     break;
                 }
                 process_event(node, &event);
                 event_type = event.type;
                 yaml_event_delete(&event);
+                count++;
             } while (event_type != YAML_STREAM_END_EVENT);
 
             yaml_parser_delete(&parser);
@@ -55,6 +57,7 @@ int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
         else
         {
             uniconf_error("Failed to open file '%s'", filepath);
+            count = 0;
         }
     }
     return count;
