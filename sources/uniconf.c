@@ -200,19 +200,27 @@ int uniconf_construct(const char *format, ...)
     int ret = 0;
     // clear previous
     uniconf_destruct();
-    // construct
-    uniconf_root = cJSON_CreateObject();
-
-    if (format)
+    uniconf_root = NULL;
+    cJSON *root = cJSON_CreateObject();
+    if (root)
     {
-        char *uniconf_path = NULL;
-        va_list ap;
-        va_start(ap, format);
-        ret = vasprintf(&uniconf_path, format, ap);
-        va_end(ap);
+        uniconf_root = root;
 
-        ret = ret < 0 ? ret : uniconf_process(uniconf_root, uniconf_path, NULL);
-        FREE_AND_NULL(uniconf_path);
+        if (format)
+        {
+            char *uniconf_path = NULL;
+            va_list ap;
+            va_start(ap, format);
+            ret = vasprintf(&uniconf_path, format, ap);
+            va_end(ap);
+
+            ret = ret < 0 ? ret : uniconf_process(uniconf_root, uniconf_path, NULL);
+            FREE_AND_NULL(uniconf_path);
+        }
+    }
+    else
+    {
+        ret = -1;
     }
     return ret;
 }
