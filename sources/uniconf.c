@@ -208,10 +208,10 @@ int uniconf_construct(const char *format, ...)
         char *uniconf_path = NULL;
         va_list ap;
         va_start(ap, format);
-        vasprintf(&uniconf_path, format, ap);
+        ret = vasprintf(&uniconf_path, format, ap);
         va_end(ap);
 
-        ret = uniconf_process(uniconf_root, uniconf_path, NULL);
+        ret = ret < 0 ? ret : uniconf_process(uniconf_root, uniconf_path, NULL);
         FREE_AND_NULL(uniconf_path);
     }
     return ret;
@@ -233,7 +233,10 @@ void uniconf_destruct()
 static uniconf_t uniconf_object_v(uniconf_t object, const char *format, va_list ap)
 {
     char *the_path = NULL;
-    vasprintf(&the_path, format, ap);
+    int ret = vasprintf(&the_path, format, ap);
+    if (ret < 0)
+        return NULL;
+
     for (char *sptr, *token = strtok_r(the_path, PATH_DELIM, &sptr); object && token; token = strtok_r(NULL, PATH_DELIM, &sptr))
     {
         object = cJSON_GetObjectItemCaseSensitive(object, token);

@@ -19,11 +19,13 @@
 static void test_construct(void)
 {
     int result = uniconf_construct(NULL);
+    fprintf(stderr, "\n%s(construct)::%d=%d", __func__, -1, result);
     CU_ASSERT_EQUAL(0, result);
 
     cJSON *root = uniconf_get_root();
     char *expect = "{}";
     char *actual = cJSON_PrintUnformatted(root);
+    fprintf(stderr, "\n%s(get_root)::%s=%s", __func__, expect, actual);
     CU_ASSERT_STRING_EQUAL(expect, actual);
     free(actual);
 
@@ -37,17 +39,16 @@ static void test_env(void)
     START_USING_TEST_DATA(HOME_PATH)
     {
         USE_OF_THE_TEST_DATA("%ms %m[^\n]", &path, &expect);
-        printf("'%s'->'%s'", path, expect);
         uniconf_construct(path);
         char *actual = cJSON_PrintUnformatted(uniconf_get_root());
-        printf("<-'%s'\n", actual);
+        fprintf(stderr, "\n%s(%s)::%s=%s", __func__, path, expect, actual);
         CU_ASSERT_STRING_EQUAL(expect, actual);
         free(actual);
+        FREE_TEST_DATA(path);
+        FREE_TEST_DATA(expect);
     }
     FINISH_USING_TEST_DATA;
     uniconf_destruct();
-    FREE_TEST_DATA(path);
-    FREE_TEST_DATA(expect);
 }
 
 static void test_ini(void)
@@ -57,17 +58,16 @@ static void test_ini(void)
     START_USING_TEST_DATA(HOME_PATH)
     {
         USE_OF_THE_TEST_DATA("%ms %m[^\n]", &path, &expect);
-        printf("'%s'->'%s'", path, expect);
         uniconf_construct(path);
         char *actual = cJSON_PrintUnformatted(uniconf_get_root());
-        printf("<-'%s'\n", actual);
+        fprintf(stderr, "\n%s(%s)::%s=%s", __func__, path, expect, actual);
         CU_ASSERT_STRING_EQUAL(expect, actual);
         free(actual);
+        FREE_TEST_DATA(path);
+        FREE_TEST_DATA(expect);
     }
     FINISH_USING_TEST_DATA;
     uniconf_destruct();
-    FREE_TEST_DATA(path);
-    FREE_TEST_DATA(expect);
 }
 
 static void test_conf(void)
@@ -77,17 +77,16 @@ static void test_conf(void)
     START_USING_TEST_DATA(HOME_PATH)
     {
         USE_OF_THE_TEST_DATA("%ms %m[^\n]", &path, &expect);
-        printf("'%s'->'%s'", path, expect);
         uniconf_construct(path);
         char *actual = cJSON_PrintUnformatted(uniconf_get_root());
-        printf("<-'%s'\n", actual);
+        fprintf(stderr, "\n%s(%s)::%s=%s", __func__, path, expect, actual);
         CU_ASSERT_STRING_EQUAL(expect, actual);
         free(actual);
+        FREE_TEST_DATA(path);
+        FREE_TEST_DATA(expect);
     }
     FINISH_USING_TEST_DATA;
     uniconf_destruct();
-    FREE_TEST_DATA(path);
-    FREE_TEST_DATA(expect);
 }
 
 static void test_json(void)
@@ -97,17 +96,16 @@ static void test_json(void)
     START_USING_TEST_DATA(HOME_PATH)
     {
         USE_OF_THE_TEST_DATA("%ms %m[^\n]", &path, &expect);
-        printf("'%s'->'%s'", path, expect);
         uniconf_construct(path);
         char *actual = cJSON_PrintUnformatted(uniconf_get_root());
-        printf("<-'%s'\n", actual);
+        fprintf(stderr, "\n%s(%s)::%s=%s", __func__, path, expect, actual);
         CU_ASSERT_STRING_EQUAL(expect, actual);
         free(actual);
+        FREE_TEST_DATA(path);
+        FREE_TEST_DATA(expect);
     }
     FINISH_USING_TEST_DATA;
     uniconf_destruct();
-    FREE_TEST_DATA(path);
-    FREE_TEST_DATA(expect);
 }
 
 static void test_yml(void)
@@ -117,19 +115,17 @@ static void test_yml(void)
     START_USING_TEST_DATA(HOME_PATH)
     {
         USE_OF_THE_TEST_DATA("%ms %m[^\n]", &path, &expect);
-        printf("'%s'->'%s'", path, expect);
         uniconf_construct(path);
         char *actual = cJSON_PrintUnformatted(uniconf_get_root());
-        printf("<-'%s'\n", actual);
+        fprintf(stderr, "\n%s(%s)::%s=%s", __func__, path, expect, actual);
         CU_ASSERT_STRING_EQUAL(expect, actual);
         free(actual);
+        FREE_TEST_DATA(path);
+        FREE_TEST_DATA(expect);
     }
     FINISH_USING_TEST_DATA;
     uniconf_destruct();
-    FREE_TEST_DATA(path);
-    FREE_TEST_DATA(expect);
 }
-
 
 CU_TestInfo test_tree[] =
     {

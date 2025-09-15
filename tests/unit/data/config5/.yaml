@@ -1,8 +1,8 @@
 foo: bar
-bar: "baz.${foo}"
+bar: "baz_foo"
 bazz:
   some: "value"
-  other: baz.${foo}
+  other: baz_foo
 barr:
   -
     wer: gdfgd

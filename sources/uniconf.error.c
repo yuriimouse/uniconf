@@ -24,9 +24,10 @@ static void uniconf_error_v(const char *format, va_list ap)
         }
 
         char *text = NULL;
-        vasprintf(&text, format, ap);
-
-        cJSON_AddItemToArray(errors, cJSON_CreateString(text));
+        if (vasprintf(&text, format, ap) >= 0)
+        {
+            cJSON_AddItemToArray(errors, cJSON_CreateString(text));
+        }
 
         FREE_AND_NULL(text);
     }
@@ -58,7 +59,8 @@ void uniconf_error_file(const char *filename, int line, const char *message, ...
     va_list ap;
     va_start(ap, message);
     char *text = NULL;
-    vasprintf(&text, message, ap);
+    int _ = vasprintf(&text, message, ap);
+    (void)_;
     va_end(ap);
 
     uniconf_error("ERROR: in file '%s' at line %d: %s", filename, line, text);

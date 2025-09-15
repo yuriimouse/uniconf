@@ -23,7 +23,8 @@ char *uniconf_makepath(const char *path, const char *name)
     {
         if (path && strlen(path) > 0)
         {
-            asprintf(&result, "%s/%s", path, name);
+            int ret = asprintf(&result, "%s/%s", path, name);
+            (void)ret;
         }
         else
         {
@@ -300,7 +301,8 @@ char *uniconf_substitute(cJSON *root, const char *str)
             if (prefix)
             {
                 char *temp = NULL;
-                asprintf(&temp, "%s%s", result ? result : "", prefix);
+                int _ = asprintf(&temp, "%s%s", result ? result : "", prefix);
+                (void)_;
                 if (result)
                     free(result);
                 result = temp;
@@ -337,7 +339,8 @@ char *uniconf_substitute(cJSON *root, const char *str)
                 if (cJSON_IsString(var))
                 {
                     char *temp = NULL;
-                    asprintf(&temp, "%s%s", result ? result : "", var->valuestring);
+                    int _ = asprintf(&temp, "%s%s", result ? result : "", var->valuestring);
+                    (void)_;
                     if (result)
                         free(result);
                     result = temp;
@@ -345,7 +348,8 @@ char *uniconf_substitute(cJSON *root, const char *str)
                 else if (cJSON_IsNumber(var))
                 {
                     char *temp = NULL;
-                    asprintf(&temp, "%s%.0f", result ? result : "", var->valuedouble);
+                    int _ = asprintf(&temp, "%s%.0f", result ? result : "", var->valuedouble);
+                    (void)_;
                     if (result)
                         free(result);
                     result = temp;
@@ -361,7 +365,8 @@ char *uniconf_substitute(cJSON *root, const char *str)
             FREE_AND_NULL(varname);
         }
         char *temp = NULL;
-        asprintf(&temp, "%s%s", result ? result : "", pointer);
+        int _ = asprintf(&temp, "%s%s", result ? result : "", pointer);
+        (void)_;
         if (result)
             free(result);
         result = temp;

@@ -27,7 +27,8 @@ int uniconf_json(cJSON *root, const char *filepath, const char *branch)
     {
         char *buffer = NULL;
         size_t len = 0;
-        getdelim(&buffer, &len, '\0', file);
+        int _ = getdelim(&buffer, &len, '\0', file);
+        (void)_;
         fclose(file);
 
         cJSON *json = cJSON_Parse(buffer);

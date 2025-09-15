@@ -4,239 +4,224 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-
-#include <lists.h>
 #include <yaml.h>
 
-static void process_event(cJSON *json, yaml_event_t *event);
-static cJSON *node = NULL;
-
-/**
- * Parse the .yml file
- *
- * @param root
- * @param filepath
- * @param branch
- * @return int
- */
-int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
+static int convert_yaml_to_cjson(
+    yaml_parser_t *parser,
+    yaml_document_t *document,
+    int node_index,
+    cJSON **out,
+    const char *filepath)
 {
-    int count = 0;
-    node = uniconf_nodeNULL(root, branch);
+    yaml_node_t *node = yaml_document_get_node(document, node_index);
+    if (!node)
+        return 0;
 
-    if (node)
+    int scalar_count = 0;
+
+    switch (node->type)
     {
-        FILE *_file = NULL;
-        if (filepath && (_file = fopen(filepath, "rt")))
+    case YAML_SCALAR_NODE:
+    {
+        const char *val = (const char *)node->data.scalar.value;
+        cJSON *item = NULL;
+
+        if (!val)
+            val = "";
+
+        // Try to detect basic types
+        if (strcmp(val, "true") == 0 || strcmp(val, "True") == 0)
         {
-            yaml_parser_t parser;
-            yaml_event_t event;
-            yaml_event_type_t event_type;
-
-            yaml_parser_initialize(&parser);
-            yaml_parser_set_input_file(&parser, _file);
-
-            do
-            {
-                if (!yaml_parser_parse(&parser, &event))
-                {
-                    uniconf_error("Failed to parse file '%s': '%s'", filepath, parser.problem);
-                    count = 0;
-                    break;
-                }
-                process_event(node, &event);
-                event_type = event.type;
-                yaml_event_delete(&event);
-                count++;
-            } while (event_type != YAML_STREAM_END_EVENT);
-
-            yaml_parser_delete(&parser);
-            fclose(_file);
+            item = cJSON_CreateTrue();
+        }
+        else if (strcmp(val, "false") == 0 || strcmp(val, "False") == 0)
+        {
+            item = cJSON_CreateFalse();
+        }
+        else if (strcmp(val, "null") == 0 || strcmp(val, "Null") == 0 || strcmp(val, "~") == 0)
+        {
+            item = cJSON_CreateNull();
         }
         else
         {
-            uniconf_error("Failed to open file '%s'", filepath);
-            count = 0;
+            char *endptr = NULL;
+            double num = strtod(val, &endptr);
+            if (endptr && *endptr == '\0')
+            {
+                item = cJSON_CreateNumber(num);
+            }
+            else
+            {
+                item = cJSON_CreateString(val);
+            }
         }
-    }
-    return count;
-}
 
-#define STRVAL(x) ((x) ? (char *)(x) : "")
-static list_t *stack = NULL;
-
-static char *astrncpy(char *src, int len)
-{
-    char *str = malloc(len + 1);
-    if (str)
-    {
-        strncpy(str, src, len);
-        str[len] = '\0';
-    }
-    return str;
-}
-
-static cJSON *add_NullToArray(cJSON *json)
-{
-    cJSON *item = cJSON_CreateNull();
-    if (!cJSON_AddItemToArray(json, item))
-    {
-        cJSON_Delete(item);
-        item = NULL;
-    }
-    return item;
-}
-
-static cJSON *add_ObjectToArray(cJSON *json)
-{
-    cJSON *item = cJSON_CreateObject();
-    if (!cJSON_AddItemToArray(json, item))
-    {
-        cJSON_Delete(item);
-        item = NULL;
-    }
-    return item;
-}
-
-static cJSON *add_StringToArray(cJSON *json, char *name, int namelen)
-{
-    cJSON *item = NULL;
-    char *buff = astrncpy(name, namelen);
-    if (buff)
-    {
-        char *expanded = uniconf_substitute(NULL, buff);
-        if (expanded)
+        if (!item)
         {
-            item = cJSON_CreateString(expanded);
-            if (item && !cJSON_AddItemToArray(json, item))
-            {
-                cJSON_Delete(item);
-                item = NULL;
-            }
-            free(expanded);
+            uniconf_error_file(filepath, 0, "failed to create JSON scalar");
+            return 0;
         }
-        free(buff);
-    }
-    return item;
-}
 
-static cJSON *add_NullToObject(cJSON *json, char *name, int namelen)
-{
-    cJSON *item = NULL;
-    char *buff = astrncpy(name, namelen);
-    if (buff)
-    {
-        item = cJSON_CreateNull();
-        if (item && !cJSON_AddItemToObject(json, buff, item))
-        {
-            cJSON_Delete(item);
-            item = NULL;
-        }
-        free(buff);
+        *out = item;
+        return 1;
     }
-    return item;
-}
 
-static void set_AsString(cJSON *json, char *value, int valuelen)
-{
-    if (cJSON_IsNull(json))
+    case YAML_SEQUENCE_NODE:
     {
-        char *buff = astrncpy(value, valuelen);
-        if (buff)
+        cJSON *array = cJSON_CreateArray();
+        if (!array)
         {
-            char *expanded = uniconf_substitute(NULL, buff);
-            if (expanded)
-            {
-                json->type = cJSON_String;
-                json->valuestring = expanded;
-            }
-            free(buff);
+            uniconf_error_file(filepath, 0, "failed to create JSON array");
+            return 0;
         }
+
+        for (yaml_node_item_t *i = node->data.sequence.items.start;
+             i < node->data.sequence.items.top; i++)
+        {
+
+            cJSON *child = NULL;
+            scalar_count += convert_yaml_to_cjson(parser, document, *i, &child, filepath);
+            if (child)
+                cJSON_AddItemToArray(array, child);
+        }
+
+        *out = array;
+        return scalar_count;
     }
-}
 
-static void set_AsArray(cJSON *json)
-{
-    if (cJSON_IsNull(json))
+    case YAML_MAPPING_NODE:
     {
-        json->type = cJSON_Array;
+        cJSON *obj = cJSON_CreateObject();
+        if (!obj)
+        {
+            uniconf_error_file(filepath, 0, "failed to create JSON object");
+            return 0;
+        }
+
+        for (yaml_node_pair_t *pair = node->data.mapping.pairs.start;
+             pair < node->data.mapping.pairs.top; pair++)
+        {
+
+            yaml_node_t *key_node = yaml_document_get_node(document, pair->key);
+            if (!key_node || key_node->type != YAML_SCALAR_NODE)
+                continue;
+
+            const char *key = (const char *)key_node->data.scalar.value;
+            if (!key)
+                key = "";
+
+            cJSON *child = NULL;
+            scalar_count += convert_yaml_to_cjson(parser, document, pair->value, &child, filepath);
+            if (child)
+                cJSON_AddItemToObject(obj, key, child);
+        }
+
+        *out = obj;
+        return scalar_count;
     }
-}
 
-static void set_AsObject(cJSON *json)
-{
-    if (cJSON_IsNull(json))
-    {
-        json->type = cJSON_Object;
-    }
-}
-
-static void process_event(cJSON *json, yaml_event_t *event)
-{
-    switch (event->type)
-    {
-    case YAML_DOCUMENT_START_EVENT:
-        stack = list_construct();
-        list_push(stack, json);
-        break;
-    case YAML_DOCUMENT_END_EVENT:
-        stack = list_destruct(stack, NULL);
-        break;
-    case YAML_SCALAR_EVENT:
-        // JSONise
-        {
-            cJSON *item = (cJSON *)list_get(stack);
-            if (cJSON_IsNull(item))
-            {
-                set_AsString(item, STRVAL(event->data.scalar.value), (int)event->data.scalar.length);
-                list_pop(stack);
-            }
-            else if (cJSON_IsObject(item))
-            {
-                list_push(stack, add_NullToObject(item, STRVAL(event->data.scalar.value), (int)event->data.scalar.length));
-            }
-            else if (cJSON_IsArray(item))
-            {
-                add_StringToArray(item, STRVAL(event->data.scalar.value), (int)event->data.scalar.length);
-            }
-        }
-        break;
-    case YAML_SEQUENCE_START_EVENT:
-        // JSONise
-        {
-            cJSON *item = (cJSON *)list_get(stack);
-            if (cJSON_IsNull(item))
-            {
-                set_AsArray(item);
-            }
-            else if (cJSON_IsArray(item))
-            {
-                list_push(stack, add_NullToArray(item));
-            }
-        }
-        break;
-    case YAML_SEQUENCE_END_EVENT:
-        list_pop(stack);
-        break;
-    case YAML_MAPPING_START_EVENT:
-        // JSONise
-        {
-            cJSON *item = (cJSON *)list_get(stack);
-            if (cJSON_IsNull(item))
-            {
-                set_AsObject(item);
-            }
-            else if (cJSON_IsArray(item))
-            {
-                list_push(stack, add_ObjectToArray(item));
-            }
-        }
-        break;
-    case YAML_MAPPING_END_EVENT:
-        list_pop(stack);
-        break;
     default:
-        break;
+        uniconf_error_file(filepath, 0, "unsupported YAML node type");
+        return 0;
     }
+}
+
+int uniconf_yml(cJSON *root, const char *filepath, const char *branch)
+{
+    if (!root || !filepath)
+    {
+        uniconf_error("uniconf_yml: invalid arguments");
+        return -1;
+    }
+
+    FILE *fh = fopen(filepath, "rb");
+    if (!fh)
+    {
+        uniconf_error_file(filepath, 0, "failed to open YAML file");
+        return -2;
+    }
+
+    yaml_parser_t parser;
+    yaml_document_t document;
+
+    if (!yaml_parser_initialize(&parser))
+    {
+        fclose(fh);
+        uniconf_error("uniconf_yml: failed to initialize YAML parser");
+        return -3;
+    }
+
+    yaml_parser_set_input_file(&parser, fh);
+
+    if (!yaml_parser_load(&parser, &document))
+    {
+        yaml_parser_delete(&parser);
+        fclose(fh);
+        uniconf_error_file(filepath, 0, "failed to parse YAML");
+        return -4;
+    }
+
+    yaml_node_t *root_node = yaml_document_get_root_node(&document);
+    if (!root_node || root_node->type != YAML_MAPPING_NODE)
+    {
+        yaml_document_delete(&document);
+        yaml_parser_delete(&parser);
+        fclose(fh);
+        uniconf_error_file(filepath, 0, "YAML root must be a mapping");
+        return -5;
+    }
+
+    cJSON *target = root;
+    if (branch && *branch)
+    {
+        cJSON *branch_obj = cJSON_GetObjectItem(root, branch);
+        if (branch_obj && !cJSON_IsObject(branch_obj))
+        {
+            yaml_document_delete(&document);
+            yaml_parser_delete(&parser);
+            fclose(fh);
+            uniconf_error_file(filepath, 0, "branch '%s' exists but is not an object", branch);
+            return -6;
+        }
+        if (!branch_obj)
+        {
+            branch_obj = cJSON_CreateObject();
+            if (!branch_obj)
+            {
+                yaml_document_delete(&document);
+                yaml_parser_delete(&parser);
+                fclose(fh);
+                uniconf_error("uniconf_yml: failed to create JSON object for branch '%s'", branch);
+                return -7;
+            }
+            cJSON_AddItemToObject(root, branch, branch_obj);
+        }
+        target = branch_obj;
+    }
+
+    int scalar_count = 0;
+    for (yaml_node_pair_t *pair = root_node->data.mapping.pairs.start;
+         pair < root_node->data.mapping.pairs.top; pair++)
+    {
+
+        yaml_node_t *key_node = yaml_document_get_node(&document, pair->key);
+        if (!key_node || key_node->type != YAML_SCALAR_NODE)
+            continue;
+
+        const char *key = (const char *)key_node->data.scalar.value;
+        if (!key)
+            key = "";
+
+        cJSON *val = NULL;
+        scalar_count += convert_yaml_to_cjson(&parser, &document, pair->value, &val, filepath);
+        if (val)
+            cJSON_AddItemToObject(target, key, val);
+    }
+
+    yaml_document_delete(&document);
+    yaml_parser_delete(&parser);
+    fclose(fh);
+    return scalar_count;
 }
